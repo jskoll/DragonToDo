@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <h3>Icon Generator for next.txt</h3>
+    <canvas id="canvas" style="border: 1px solid #ccc;"></canvas>
+    <div>
+        <button onclick="generateIcons()">Generate Icons</button>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const svgSource = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+          <circle cx="256" cy="256" r="240" fill="#2E3440" stroke="#5E81AC" stroke-width="4"/>
+          <polyline points="180 360 300 240 180 120" 
+                    fill="none" 
+                    stroke="#FF7F50" 
+                    stroke-width="24" 
+                    stroke-linecap="round" 
+                    stroke-linejoin="round"/>
+          <circle cx="256" cy="256" r="200" fill="none" stroke="#5E81AC" stroke-width="2" opacity="0.3"/>
+        </svg>`;
+
+        function generateIcons() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const output = document.getElementById('output');
+            
+            const sizes = [16, 32, 64, 128, 256, 512, 1024];
+            const links = [];
+            
+            sizes.forEach(size => {
+                canvas.width = size;
+                canvas.height = size;
+                
+                const img = new Image();
+                const svgBlob = new Blob([svgSource], {type: 'image/svg+xml'});
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    ctx.clearRect(0, 0, size, size);
+                    ctx.drawImage(img, 0, 0, size, size);
+                    
+                    canvas.toBlob(function(blob) {
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `icon_${size}x${size}.png`;
+                        link.textContent = `Download icon_${size}x${size}.png`;
+                        link.style.display = 'block';
+                        link.style.margin = '5px 0';
+                        output.appendChild(link);
+                        URL.revokeObjectURL(url);
+                    }, 'image/png');
+                };
+                
+                img.src = url;
+            });
+        }
+    </script>
+</body>
+</html>

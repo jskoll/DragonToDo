@@ -1,0 +1,80 @@
+@use '../styles' as *;
+
+.app {
+  height: 100vh;
+  @include flex-column;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: $font-family-base;
+}
+
+.app-header {
+  @include flex-between;
+  padding: $spacing-md;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: $shadow-sm;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: $font-size-2xl;
+  color: var(--color-text-primary);
+  font-weight: $font-weight-semibold;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.header-actions button {
+  @include button-secondary;
+}
+
+.header-actions .theme-selector {
+  margin-left: $spacing-md;
+}
+
+.file-path {
+  font-size: $font-size-sm;
+  color: var(--color-text-muted);
+  max-width: 300px;
+  @include text-truncate;
+  
+  @include mobile {
+    display: none;
+  }
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  
+  @include mobile {
+    @include flex-column;
+  }
+}
+
+.sidebar {
+  width: 300px;
+  background: var(--color-surface-secondary);
+  border-right: 1px solid var(--color-border);
+  padding: $spacing-md;
+  overflow-y: auto;
+  
+  @include mobile {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    max-height: 40vh;
+  }
+}
+
+.content {
+  flex: 1;
+  @include flex-column;
+  overflow: hidden;
+}

@@ -1,0 +1,113 @@
+@use '../styles' as *;
+
+.todo-form {
+  @include card;
+  margin-bottom: $spacing-md;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: $spacing-md;
+    color: var(--color-text-primary);
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.form-group {
+  margin-bottom: $spacing-md;
+
+  label {
+    display: block;
+    margin-bottom: $spacing-sm;
+    font-weight: $font-weight-medium;
+    color: var(--color-text-secondary);
+    font-size: $font-size-sm;
+
+    &:has(input[type="checkbox"]) {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+  }
+
+  input,
+  select,
+  textarea {
+    @include input-base;
+    width: 100%;
+    font-family: $font-family-base;
+
+    &[type="checkbox"] {
+      width: auto;
+      margin-right: $spacing-sm;
+      accent-color: var(--color-button-primary);
+    }
+
+    &[type="datetime-local"] {
+      cursor: pointer;
+    }
+
+    &.error {
+      border-color: var(--color-error);
+      box-shadow: 0 0 0 2px rgba(220, 50, 47, 0.2);
+    }
+  }
+
+  textarea {
+    min-height: 80px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+
+  select {
+    cursor: pointer;
+
+    option {
+      background: var(--color-input-background);
+      color: var(--color-text-primary);
+    }
+  }
+}
+
+.error-message {
+  color: var(--color-error);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  margin-top: $spacing-xs;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+
+  &::before {
+    content: '⚠️';
+    font-size: $font-size-sm;
+  }
+}
+
+.reminder-preview {
+  color: var(--color-success);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  margin-top: $spacing-xs;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+
+  &::before {
+    content: '🔔';
+    font-size: $font-size-sm;
+  }
+}
+
+.submit-button {
+  @include button-primary;
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

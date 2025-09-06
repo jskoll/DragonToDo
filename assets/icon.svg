@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#2E3440" stroke="#5E81AC" stroke-width="4"/>
+  
+  <!-- Main arrow icon scaled and centered -->
+  <polyline points="180 360 300 240 180 120" 
+            fill="none" 
+            stroke="#FF7F50" 
+            stroke-width="24" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+  
+  <!-- Secondary accent -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#5E81AC" stroke-width="2" opacity="0.3"/>
+</svg>

@@ -1,0 +1,219 @@
+@use '../styles' as *;
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.edit-modal {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: $border-radius-md;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10000;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+
+  h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: $font-size-xl;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: $spacing-xs;
+  border-radius: $border-radius-sm;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-primary);
+  }
+}
+
+.modal-body {
+  padding: $spacing-lg;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.form-group {
+  margin-bottom: $spacing-md;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: $spacing-xs;
+  font-weight: $font-weight-medium;
+  color: var(--color-text-primary);
+  font-size: $font-size-sm;
+}
+
+.form-group input,
+.form-group select {
+  @include input-base;
+  width: 100%;
+  padding: $spacing-sm;
+  font-size: $font-size-sm;
+  
+  &.error {
+    border-color: var(--color-error);
+    box-shadow: 0 0 0 2px rgba(255, 0, 0, 0.1);
+  }
+
+  &:focus {
+    border-color: var(--color-border-focus);
+    box-shadow: 0 0 0 2px rgba(38, 139, 210, 0.2);
+  }
+}
+
+.form-group small {
+  display: block;
+  margin-top: $spacing-xs;
+  color: var(--color-text-muted);
+  font-size: $font-size-xs;
+}
+
+.reminder-group {
+  .checkbox-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: $spacing-sm;
+
+    input[type="checkbox"] {
+      width: auto;
+      margin-right: $spacing-sm;
+      accent-color: var(--color-button-primary);
+    }
+
+    label {
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+  }
+
+  input[type="datetime-local"] {
+    margin-bottom: $spacing-xs;
+  }
+}
+
+.error-message {
+  color: var(--color-error);
+  font-size: $font-size-xs;
+  margin-top: $spacing-xs;
+  padding: $spacing-xs;
+  background: rgba(255, 0, 0, 0.1);
+  border-radius: $border-radius-sm;
+  border-left: 3px solid var(--color-error);
+}
+
+.reminder-preview {
+  color: var(--color-success);
+  font-size: $font-size-xs;
+  margin-top: $spacing-xs;
+  padding: $spacing-xs;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: $border-radius-sm;
+  border-left: 3px solid var(--color-success);
+}
+
+.modal-footer {
+  padding: $spacing-md $spacing-lg;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-sm;
+}
+
+.cancel-button,
+.save-button {
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.cancel-button {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-primary);
+  }
+}
+
+.save-button {
+  @include button-primary;
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+
+    &:hover {
+      background: var(--color-button-primary);
+      transform: none;
+    }
+  }
+}
+
+@include mobile {
+  .edit-modal {
+    width: 95%;
+    margin: $spacing-sm;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: $spacing-md;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+
+    .cancel-button,
+    .save-button {
+      width: 100%;
+    }
+  }
+}

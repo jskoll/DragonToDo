@@ -1,0 +1,88 @@
+// CSS Custom Properties (CSS Variables) for themes
+// These will be dynamically set by the ThemeProvider
+
+:root {
+  // Base colors
+  --color-background: #fdf6e3;
+  --color-surface: #eee8d5;
+  --color-surface-secondary: #f5f1e8;
+  
+  // Text colors
+  --color-text-primary: #586e75;
+  --color-text-secondary: #657b83;
+  --color-text-muted: #93a1a1;
+  
+  // Interactive elements
+  --color-border: #93a1a1;
+  --color-border-focus: #268bd2;
+  --color-button-primary: #268bd2;
+  --color-button-primary-hover: #6c71c4;
+  --color-button-secondary: #93a1a1;
+  --color-button-secondary-hover: #586e75;
+  
+  // Status colors
+  --color-success: #859900;
+  --color-warning: #b58900;
+  --color-error: #dc322f;
+  --color-info: #268bd2;
+  
+  // Priority colors
+  --color-priority-a: #dc322f;
+  --color-priority-b: #cb4b16;
+  --color-priority-c: #b58900;
+  
+  // Project and context tags
+  --color-project-tag: #d6e6f2;
+  --color-project-tag-text: #268bd2;
+  --color-context-tag: #e6d6f2;
+  --color-context-tag-text: #d33682;
+  
+  // Form elements
+  --color-input-background: #fdf6e3;
+  --color-input-border: #93a1a1;
+  --color-input-focus: #268bd2;
+  
+  // Progress and completion
+  --color-completion-background: #eee8d5;
+  --color-completion-text: #586e75;
+  --color-progress-fill: linear-gradient(90deg, #268bd2, #859900);
+}
+
+// Common breakpoints
+$breakpoint-mobile: 768px;
+$breakpoint-tablet: 1024px;
+$breakpoint-desktop: 1200px;
+
+// Common spacing
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 1rem;
+$spacing-lg: 1.5rem;
+$spacing-xl: 2rem;
+
+// Common border radius
+$border-radius-sm: 3px;
+$border-radius-md: 4px;
+$border-radius-lg: 8px;
+$border-radius-xl: 12px;
+
+// Common shadows
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+$shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15);
+
+// Typography
+$font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+
+$font-size-xs: 0.75rem;
+$font-size-sm: 0.875rem;
+$font-size-base: 1rem;
+$font-size-lg: 1.125rem;
+$font-size-xl: 1.25rem;
+$font-size-2xl: 1.5rem;
+
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;

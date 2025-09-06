@@ -1,0 +1,35 @@
+@use '../styles' as *;
+
+.theme-selector {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.theme-label {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  
+  @include mobile {
+    @include visually-hidden;
+  }
+}
+
+.theme-select {
+  @include input-base;
+  cursor: pointer;
+  min-width: 140px;
+  padding: $spacing-xs $spacing-sm;
+  font-size: $font-size-sm;
+
+  option {
+    background: var(--color-input-background);
+    color: var(--color-text-primary);
+  }
+
+  @include mobile {
+    min-width: 100px;
+  }
+}

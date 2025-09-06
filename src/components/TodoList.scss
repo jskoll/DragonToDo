@@ -1,0 +1,25 @@
+@use '../styles' as *;
+
+.todo-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-md;
+  
+  @include mobile {
+    padding: $spacing-sm;
+  }
+}
+
+.todo-list-empty {
+  @include flex-center;
+  height: 200px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: $font-size-sm;
+  text-align: center;
+  
+  @include mobile {
+    height: 150px;
+    padding: $spacing-md;
+  }
+}

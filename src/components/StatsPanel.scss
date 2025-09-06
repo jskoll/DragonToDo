@@ -1,0 +1,76 @@
+@use '../styles' as *;
+
+.stats-panel {
+  @include card;
+  margin-bottom: $spacing-md;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: $spacing-md;
+    color: var(--color-text-primary);
+    border-bottom: 2px solid var(--color-button-primary);
+    padding-bottom: $spacing-sm;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.stats-section {
+  margin-bottom: $spacing-lg;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  h4 {
+    margin: 0 0 $spacing-sm 0;
+    color: var(--color-text-secondary);
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.stat-item {
+  @include flex-between;
+  padding: $spacing-xs 0;
+  font-size: $font-size-sm;
+  
+  &:not(:last-child) {
+    border-bottom: 1px solid transparent;
+  }
+}
+
+.stat-label {
+  color: var(--color-text-muted);
+}
+
+.stat-value {
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary);
+  font-feature-settings: 'tnum'; // Tabular numbers
+}
+
+.progress-bar {
+  width: 100%;
+  height: 20px;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+  margin: $spacing-sm 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-progress-fill);
+  transition: width 0.3s ease;
+  border-radius: inherit;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: $font-size-xs;
+  color: var(--color-text-muted);
+  font-weight: $font-weight-medium;
+  margin-top: $spacing-xs;
+}

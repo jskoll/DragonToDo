@@ -1,0 +1,139 @@
+@use '../styles' as *;
+
+.todo-item {
+  @include card;
+  margin-bottom: $spacing-sm;
+  position: relative;
+
+  &.completed {
+    opacity: 0.7;
+    background: var(--color-completion-background);
+
+    .todo-text {
+      text-decoration: line-through;
+      color: var(--color-completion-text);
+    }
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.todo-item-main {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.todo-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-button-primary);
+  cursor: pointer;
+}
+
+.priority {
+  @include priority-indicator(--color-priority-c);
+
+  &-a {
+    @include priority-indicator(--color-priority-a);
+  }
+  
+  &-b {
+    @include priority-indicator(--color-priority-b);
+  }
+  
+  &-c {
+    @include priority-indicator(--color-priority-c);
+  }
+}
+
+.todo-text {
+  flex: 1;
+  cursor: pointer;
+  padding: $spacing-xs;
+  border-radius: $border-radius-sm;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: var(--color-surface-secondary);
+  }
+}
+
+.todo-edit-input {
+  @include input-base;
+  flex: 1;
+  padding: $spacing-xs;
+  font-size: $font-size-sm;
+  border-color: var(--color-border-focus);
+  
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(38, 139, 210, 0.2);
+  }
+}
+
+.todo-tags {
+  display: flex;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.tag {
+  @include tag;
+}
+
+.project-tag {
+  @include tag(--color-project-tag, --color-project-tag-text);
+}
+
+.context-tag {
+  @include tag(--color-context-tag, --color-context-tag-text);
+}
+
+.todo-item-details {
+  display: flex;
+  gap: $spacing-md;
+  font-size: $font-size-xs;
+  color: var(--color-text-muted);
+  margin-bottom: $spacing-sm;
+  flex-wrap: wrap;
+}
+
+.date-info, .reminder-info {
+  white-space: nowrap;
+}
+
+.reminder-info {
+  color: var(--color-warning);
+  font-weight: $font-weight-medium;
+  
+  &::before {
+    content: '🔔 ';
+  }
+}
+
+.todo-actions {
+  display: flex;
+  gap: $spacing-xs;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.edit-button, .delete-button {
+  @include button-secondary;
+  padding: $spacing-xs $spacing-sm;
+  font-size: $font-size-xs;
+  min-width: 60px;
+  white-space: nowrap;
+}
+
+.delete-button:hover {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: white;
+}
