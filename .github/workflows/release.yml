@@ -1,0 +1,245 @@
+name: Build and Release DragonToDo
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests
+
+      - name: Build application
+        run: npm run build
+
+      - name: Generate icons
+        run: npm run generate-icons
+
+      - name: Package application (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm run package:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Package application (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run package:win
+
+      - name: Package application (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run package:linux
+
+      - name: Upload artifacts (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-release
+          path: |
+            dist-electron/*.dmg
+            dist-electron/*.zip
+            dist-electron/latest-mac.yml
+
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-release
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.zip
+            dist-electron/latest.yml
+
+      - name: Upload artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-release
+          path: |
+            dist-electron/*.AppImage
+            dist-electron/*.deb
+            dist-electron/*.rpm
+            dist-electron/latest-linux.yml
+
+  create-release:
+    needs: release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: DragonToDo ${{ github.ref }}
+          draft: false
+          prerelease: false
+          body: |
+            ## What's New in ${{ github.ref }}
+            
+            ### 🐉 DragonToDo - Secure Todo Management
+            
+            Download the appropriate version for your operating system:
+            
+            ### 🍎 macOS
+            - **DragonToDo-${{ github.ref }}.dmg** - Main installer (Intel & Apple Silicon)
+            - **DragonToDo-${{ github.ref }}-mac.zip** - Portable version
+            
+            ### 🪟 Windows
+            - **DragonToDo-Setup-${{ github.ref }}.exe** - Main installer (x64 & ARM64)
+            - **DragonToDo-${{ github.ref }}-win.zip** - Portable version
+            
+            ### 🐧 Linux
+            - **DragonToDo-${{ github.ref }}.AppImage** - Universal Linux app (x64 & ARM64)
+            - **DragonToDo-${{ github.ref }}.deb** - Debian/Ubuntu package
+            - **DragonToDo-${{ github.ref }}.rpm** - Fedora/RHEL package
+            
+            ### ✨ Features
+            - 🔒 Zero-knowledge encryption with AES-256
+            - 🎨 Beautiful Nord theme interface
+            - 📝 Full todo.txt format compatibility
+            - 🔍 Advanced filtering and search
+            - ⏰ Reminder notifications
+            - 📊 Productivity statistics
+            - 💾 .dtd encrypted file format
+            - 🌐 Cross-platform support
+            
+            ### 🔐 Security Notes
+            - All encryption happens locally on your device
+            - Your password is never stored or transmitted
+            - Use a strong, unique password for your todo files
+            
+            ---
+            
+            **Full Changelog**: https://github.com/jskoll/DragonToDo/compare/previous-tag...current-tag
+
+      # Upload macOS files
+      - name: Upload macOS DMG
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: macos-release/DragonToDo-*.dmg
+          asset_name: DragonToDo-${{ github.ref }}.dmg
+          asset_content_type: application/octet-stream
+
+      - name: Upload macOS ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: macos-release/DragonToDo-*.zip
+          asset_name: DragonToDo-${{ github.ref }}-mac.zip
+          asset_content_type: application/zip
+
+      # Upload Windows files
+      - name: Upload Windows NSIS
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: windows-release/DragonToDo Setup *.exe
+          asset_name: DragonToDo-Setup-${{ github.ref }}.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload Windows ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: windows-release/DragonToDo-*.zip
+          asset_name: DragonToDo-${{ github.ref }}-win.zip
+          asset_content_type: application/zip
+
+      # Upload Linux files
+      - name: Upload Linux AppImage
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: linux-release/DragonToDo-*.AppImage
+          asset_name: DragonToDo-${{ github.ref }}.AppImage
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux DEB
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: linux-release/DragonToDo-*.deb
+          asset_name: DragonToDo-${{ github.ref }}.deb
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux RPM
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: linux-release/DragonToDo-*.rpm
+          asset_name: DragonToDo-${{ github.ref }}.rpm
+          asset_content_type: application/octet-stream
+
+      # Upload auto-update files
+      - name: Upload macOS auto-update file
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: macos-release/latest-mac.yml
+          asset_name: latest-mac.yml
+          asset_content_type: text/yaml
+
+      - name: Upload Windows auto-update file
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: windows-release/latest.yml
+          asset_name: latest.yml
+          asset_content_type: text/yaml
+
+      - name: Upload Linux auto-update file
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: linux-release/latest-linux.yml
+          asset_name: latest-linux.yml
+          asset_content_type: text/yaml

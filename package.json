@@ -40,6 +40,13 @@
   "build": {
     "appId": "com.dragontodo.manager",
     "productName": "DragonToDo",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jskoll",
+        "repo": "DragonToDo"
+      }
+    ],
     "directories": {
       "output": "dist-electron"
     },
@@ -73,11 +80,17 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "assets/logo.png",
@@ -88,15 +101,23 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "rpm",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/logo.png",
@@ -149,6 +170,7 @@
     "@types/react-dom": "^19.1.9",
     "@types/uuid": "^10.0.0",
     "crypto-js": "^4.2.0",
+    "electron-updater": "^6.6.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "uuid": "^11.1.0"

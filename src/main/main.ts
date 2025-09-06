@@ -1,12 +1,18 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, Notification } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { UpdateService } from '../services/updateService';
 
 interface ElectronAPI {
   loadTodoFile: () => Promise<string>;
   saveTodoFile: (content: string) => Promise<void>;
   showNotification: (title: string, body: string) => void;
   openFileDialog: () => Promise<string | undefined>;
+  checkForUpdates: () => Promise<void>;
+  downloadUpdate: () => Promise<void>;
+  installUpdate: () => void;
+  getUpdateInfo: () => any;
+  isUpdateAvailable: () => boolean;
 }
 
 declare global {
@@ -17,6 +23,7 @@ declare global {
 
 let mainWindow: BrowserWindow;
 let currentFilePath: string | undefined;
+let updateService: UpdateService;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -45,6 +52,18 @@ function createWindow(): void {
   mainWindow.on('closed', () => {
     mainWindow = null as any;
   });
+
+  // Initialize update service
+  updateService = new UpdateService(mainWindow);
+
+  // Check for updates on app startup (after a delay to let the app load)
+  setTimeout(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      updateService.checkForUpdates().catch(error => {
+        console.log('Update check failed:', error);
+      });
+    }
+  }, 5000);
 }
 
 function createMenu(): void {
@@ -94,6 +113,34 @@ function createMenu(): void {
             if (!result.canceled && result.filePath) {
               currentFilePath = result.filePath;
               mainWindow.webContents.send('save-as-request', currentFilePath);
+            }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Check for Updates',
+          click: async () => {
+            try {
+              await updateService.checkForUpdates();
+              if (!updateService.isUpdateReady()) {
+                await dialog.showMessageBox(mainWindow, {
+                  type: 'info',
+                  title: 'No Updates',
+                  message: 'DragonToDo is up to date',
+                  detail: 'You have the latest version installed.'
+                });
+              }
+            } catch (error) {
+              await dialog.showMessageBox(mainWindow, {
+                type: 'error',
+                title: 'Update Check Failed',
+                message: 'Unable to check for updates',
+                detail: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+              });
             }
           }
         }
@@ -170,4 +217,35 @@ ipcMain.handle('open-file-dialog', async (): Promise<string | undefined> => {
   }
 
   return undefined;
+});
+
+// Update-related IPC handlers
+ipcMain.handle('check-for-updates', async (): Promise<void> => {
+  try {
+    await updateService.checkForUpdates();
+  } catch (error) {
+    console.error('Manual update check failed:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('download-update', async (): Promise<void> => {
+  try {
+    await updateService.downloadUpdate();
+  } catch (error) {
+    console.error('Update download failed:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('install-update', (): void => {
+  updateService.installUpdate();
+});
+
+ipcMain.handle('get-update-info', (): any => {
+  return updateService.getUpdateInfo();
+});
+
+ipcMain.handle('is-update-available', (): boolean => {
+  return updateService.isUpdateReady();
 });

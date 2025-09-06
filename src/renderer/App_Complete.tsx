@@ -7,7 +7,7 @@ import {
   Button, 
   Box, 
   Container, 
-  Grid2 as Grid, 
+  Grid,
   Paper,
   Chip,
   Alert,
@@ -32,6 +32,7 @@ import TodoForm_MUI from '../components/TodoForm_MUI';
 import FilterBar_MUI from '../components/FilterBar_MUI';
 import StatsPanel_MUI from '../components/StatsPanel_MUI';
 import PasswordDialog_MUI from '../components/PasswordDialog_MUI';
+import UpdateNotification from './components/UpdateNotification';
 
 /**
  * Main DragonToDo application component with full functionality
@@ -407,7 +408,7 @@ const App: React.FC = () => {
         <Container maxWidth={false} sx={{ mt: 2, mb: 2 }}>
           <Grid container spacing={3}>
             {/* Left Sidebar */}
-            <Grid xs={12} md={3}>
+            <Grid item xs={12} md={3}>
               <Paper sx={{ p: 2, mb: 2 }}>
                 <TodoForm_MUI onSubmit={addTodo} />
               </Paper>
@@ -418,7 +419,7 @@ const App: React.FC = () => {
             </Grid>
 
             {/* Main Content Area */}
-            <Grid xs={12} md={9}>
+            <Grid item xs={12} md={9}>
               <Paper sx={{ p: 2, mb: 2 }}>
                 <FilterBar_MUI
                   filter={filter}
@@ -469,6 +470,9 @@ const App: React.FC = () => {
             </Alert>
           )}
         </Snackbar>
+
+        {/* Update Notification Component */}
+        <UpdateNotification />
       </Box>
     </MUIThemeProvider>
   );
