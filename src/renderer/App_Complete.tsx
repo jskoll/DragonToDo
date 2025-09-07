@@ -266,19 +266,35 @@ const App: React.FC = () => {
     setNotification({ message: 'Todo added successfully', type: 'success' });
   }, [dispatch, reminderService]);
 
-  const handleNewFile = () => {
+  const handleNewFile = async () => {
     if (isModified) {
       const confirmed = window.confirm('You have unsaved changes. Do you want to discard them and create a new file?');
       if (!confirmed) {
         return;
       }
     }
-    dispatch(setTodos([]));
-    setCurrentFilePath(null);
-    setIsModified(false);
-    setIsEncrypted(false);
-    setPassword('');
-    setNotification({ message: 'New file created. Save to a location.', type: 'success' });
+
+    try {
+      const filePath = await window.electronAPI.showSaveDialog();
+      if (filePath) {
+        dispatch(setTodos([]));
+        setCurrentFilePath(filePath);
+        setIsModified(false);
+        setIsEncrypted(false);
+        setPassword('');
+        
+        // Save the empty file immediately
+        await window.electronAPI.saveTodoFile('');
+        
+        setNotification({ message: `New file created at ${filePath.split('/').pop()}`, type: 'success' });
+      }
+    } catch (error) {
+      console.error('Error creating new file:', error);
+      setNotification({ 
+        message: error instanceof Error ? error.message : 'Failed to create new file', 
+        type: 'error' 
+      });
+    }
   };
 
   /**
