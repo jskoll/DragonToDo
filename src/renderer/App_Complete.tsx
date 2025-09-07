@@ -12,13 +12,15 @@ import {
   Paper,
   Chip,
   Alert,
-  Snackbar
+  Snackbar,
+  IconButton
 } from '@mui/material';
 import { 
   Save as SaveIcon,
   FolderOpen as OpenIcon,
   Lock as LockIcon,
-  LockOpen as LockOpenIcon
+  LockOpen as LockOpenIcon,
+  NoteAdd as NoteAddIcon
 } from '@mui/icons-material';
 
 import { TodoItem, TodoFilter, SortField, SortDirection } from '../types/todo';
@@ -61,6 +63,7 @@ const App: React.FC = () => {
   // File handling state
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
   const [isModified, setIsModified] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ filePath: string; content: string } | null>(null);
   
   // Encryption state
   const [isEncrypted, setIsEncrypted] = useState(false);
@@ -84,6 +87,9 @@ const App: React.FC = () => {
       // Check if content is encrypted
       if (content.startsWith('ENCRYPTED:')) {
         if (!filePassword) {
+          if (filePath) {
+            setPendingFile({ filePath, content });
+          }
           setPasswordMode('decrypt');
           setShowPasswordDialog(true);
           return;
@@ -239,10 +245,14 @@ const App: React.FC = () => {
   /**
    * Adds a new todo item
    */
-  const handleAddTodo = useCallback((newTodo: Omit<TodoItem, 'id'>) => {
+  const handleAddTodo = useCallback((newTodo: Omit<TodoItem, 'id' | 'completed' | 'creationDate' | 'rawText' | 'keyValuePairs'>) => {
     const todo: TodoItem = {
       ...newTodo,
       id: crypto.randomUUID(),
+      completed: false,
+      creationDate: new Date(),
+      rawText: newTodo.text,
+      keyValuePairs: {},
     };
     
     dispatch(addTodoAction(todo));
@@ -255,6 +265,21 @@ const App: React.FC = () => {
     
     setNotification({ message: 'Todo added successfully', type: 'success' });
   }, [dispatch, reminderService]);
+
+  const handleNewFile = () => {
+    if (isModified) {
+      const confirmed = window.confirm('You have unsaved changes. Do you want to discard them and create a new file?');
+      if (!confirmed) {
+        return;
+      }
+    }
+    dispatch(setTodos([]));
+    setCurrentFilePath(null);
+    setIsModified(false);
+    setIsEncrypted(false);
+    setPassword('');
+    setNotification({ message: 'New file created. Save to a location.', type: 'success' });
+  };
 
   /**
    * Updates an existing todo item
@@ -313,10 +338,9 @@ const App: React.FC = () => {
       setNotification({ message: 'Encryption enabled', type: 'success' });
     } else {
       // Try to decrypt with this password
-      if (currentFilePath) {
-        window.electronAPI.loadTodoFile().then(content => {
-          loadFile(content, currentFilePath, submittedPassword);
-        });
+      if (pendingFile) {
+        loadFile(pendingFile.content, pendingFile.filePath, submittedPassword);
+        setPendingFile(null);
       }
     }
     setShowPasswordDialog(false);
@@ -379,15 +403,12 @@ const App: React.FC = () => {
             </Box>
             
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Button
-                color="inherit"
-                startIcon={<OpenIcon />}
-                onClick={openFile}
-                variant="outlined"
-                size="small"
-              >
-                Open
-              </Button>
+              <IconButton color="inherit" onClick={handleNewFile}>
+                <NoteAddIcon />
+              </IconButton>
+              <IconButton color="inherit" onClick={openFile}>
+                <OpenIcon />
+              </IconButton>
               
               <Button
                 color="inherit"
@@ -421,11 +442,10 @@ const App: React.FC = () => {
         </AppBar>
 
         {/* Main Content */}
-        <Container maxWidth={false} sx={{ mt: 2, mb: 2 }}>
+        <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
           <Grid container spacing={3}>
-            {/* Left Sidebar */}
             <Grid item xs={12} md={3}>
-              <Paper sx={{ p: 2, mb: 2 }}>
+              <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', mb: 2 }}>
                 <TodoForm_MUI onSubmit={handleAddTodo} />
               </Paper>
               
@@ -433,10 +453,8 @@ const App: React.FC = () => {
                 <StatsPanel_MUI todos={todos} />
               </Paper>
             </Grid>
-
-            {/* Main Content Area */}
             <Grid item xs={12} md={9}>
-              <Paper sx={{ p: 2, mb: 2 }}>
+              <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', mb: 2 }}>
                 <FilterBar_MUI
                   filter={filter}
                   onFilterChange={handleFilterChange}
@@ -463,7 +481,10 @@ const App: React.FC = () => {
           open={showPasswordDialog}
           mode={passwordMode}
           onSubmit={handlePasswordSubmit}
-          onCancel={() => setShowPasswordDialog(false)}
+          onCancel={() => {
+            setShowPasswordDialog(false);
+            setPendingFile(null);
+          }}
         />
 
         {/* Notification Snackbar */}
