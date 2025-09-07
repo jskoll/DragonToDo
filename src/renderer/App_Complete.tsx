@@ -13,14 +13,16 @@ import {
   Chip,
   Alert,
   Snackbar,
-  IconButton
+  IconButton,
+  Drawer
 } from '@mui/material';
 import { 
   Save as SaveIcon,
   FolderOpen as OpenIcon,
   Lock as LockIcon,
   LockOpen as LockOpenIcon,
-  NoteAdd as NoteAddIcon
+  NoteAdd as NoteAddIcon,
+  Menu as MenuIcon
 } from '@mui/icons-material';
 
 import { TodoItem, TodoFilter, SortField, SortDirection } from '../types/todo';
@@ -73,6 +75,7 @@ const App: React.FC = () => {
   
   // UI state
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   
   // Services
   const [reminderService] = useState(() => new ReminderService());
