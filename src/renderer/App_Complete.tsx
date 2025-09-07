@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { ThemeProvider as MUIThemeProvider, CssBaseline } from '@mui/material';
 import { 
   AppBar, 
@@ -26,6 +27,15 @@ import { ReminderService } from '../services/reminderService';
 import { encryptData, decryptData } from '../utils/encryption';
 import nordTheme from '../theme/nordTheme';
 
+import { RootState, AppDispatch } from '../store/store';
+import {
+  setTodos,
+  addTodo as addTodoAction,
+  updateTodo as updateTodoAction,
+  deleteTodo as deleteTodoAction,
+} from '../store/todosSlice';
+import { setFilter, setSort } from '../store/filterSlice';
+
 // Import all the MUI components we created
 import TodoList_MUI from '../components/TodoList_MUI';
 import TodoForm_MUI from '../components/TodoForm_MUI';
@@ -39,12 +49,14 @@ import UpdateNotification from './components/UpdateNotification';
  * Features: MUI interface, Nord theme, encryption, filtering, sorting, reminders
  */
 const App: React.FC = () => {
-  // Core state
-  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const dispatch: AppDispatch = useDispatch();
+
+  // Core state from Redux
+  const { todos } = useSelector((state: RootState) => state.todos);
+  const { filter, sortField, sortDirection } = useSelector((state: RootState) => state.filter);
+
+  // Local state for filtered todos
   const [filteredTodos, setFilteredTodos] = useState<TodoItem[]>([]);
-  const [filter, setFilter] = useState<TodoFilter>({});
-  const [sortField, setSortField] = useState<SortField>('creationDate');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   
   // File handling state
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
@@ -84,7 +96,7 @@ const App: React.FC = () => {
       }
       
       const parsedTodos = TodoParser.parseFile(todoContent);
-      setTodos(parsedTodos);
+      dispatch(setTodos(parsedTodos));
       if (filePath) {
         setCurrentFilePath(filePath);
       }
@@ -104,7 +116,7 @@ const App: React.FC = () => {
         type: 'error' 
       });
     }
-  }, [reminderService]);
+  }, [dispatch, reminderService]);
 
   /**
    * Saves todos to file with optional encryption
@@ -227,13 +239,13 @@ const App: React.FC = () => {
   /**
    * Adds a new todo item
    */
-  const addTodo = useCallback((newTodo: Omit<TodoItem, 'id'>) => {
+  const handleAddTodo = useCallback((newTodo: Omit<TodoItem, 'id'>) => {
     const todo: TodoItem = {
       ...newTodo,
       id: crypto.randomUUID(),
     };
     
-    setTodos(prev => [...prev, todo]);
+    dispatch(addTodoAction(todo));
     setIsModified(true);
     
     // Set up reminder if enabled
@@ -242,17 +254,13 @@ const App: React.FC = () => {
     }
     
     setNotification({ message: 'Todo added successfully', type: 'success' });
-  }, [reminderService]);
+  }, [dispatch, reminderService]);
 
   /**
    * Updates an existing todo item
    */
-  const updateTodo = useCallback((id: string, updates: Partial<TodoItem>) => {
-    setTodos(prev => prev.map(todo => 
-      todo.id === id 
-        ? { ...todo, ...updates }
-        : todo
-    ));
+  const handleUpdateTodo = useCallback((id: string, updates: Partial<TodoItem>) => {
+    dispatch(updateTodoAction({ id, updates }));
     setIsModified(true);
     
     // Update reminders
@@ -267,17 +275,17 @@ const App: React.FC = () => {
     }
     
     setNotification({ message: 'Todo updated successfully', type: 'success' });
-  }, [todos, reminderService]);
+  }, [dispatch, todos, reminderService]);
 
   /**
    * Deletes a todo item
    */
-  const deleteTodo = useCallback((id: string) => {
-    setTodos(prev => prev.filter(todo => todo.id !== id));
+  const handleDeleteTodo = useCallback((id: string) => {
+    dispatch(deleteTodoAction(id));
     setIsModified(true);
     reminderService.cancelReminder(id);
     setNotification({ message: 'Todo deleted', type: 'info' });
-  }, [reminderService]);
+  }, [dispatch, reminderService]);
 
   /**
    * Opens a file dialog and loads selected file
@@ -342,6 +350,14 @@ const App: React.FC = () => {
    */
   const handleCloseNotification = () => {
     setNotification(null);
+  };
+
+  const handleFilterChange = (newFilter: TodoFilter) => {
+    dispatch(setFilter(newFilter));
+  };
+
+  const handleSortChange = (field: SortField, direction: SortDirection) => {
+    dispatch(setSort({ field, direction }));
   };
 
   return (
@@ -410,7 +426,7 @@ const App: React.FC = () => {
             {/* Left Sidebar */}
             <Grid item xs={12} md={3}>
               <Paper sx={{ p: 2, mb: 2 }}>
-                <TodoForm_MUI onSubmit={addTodo} />
+                <TodoForm_MUI onSubmit={handleAddTodo} />
               </Paper>
               
               <Paper sx={{ p: 2 }}>
@@ -423,13 +439,10 @@ const App: React.FC = () => {
               <Paper sx={{ p: 2, mb: 2 }}>
                 <FilterBar_MUI
                   filter={filter}
-                  onFilterChange={setFilter}
+                  onFilterChange={handleFilterChange}
                   sortField={sortField}
                   sortDirection={sortDirection}
-                  onSortChange={(field, direction) => {
-                    setSortField(field);
-                    setSortDirection(direction);
-                  }}
+                  onSortChange={handleSortChange}
                   todos={todos}
                 />
               </Paper>
@@ -437,8 +450,8 @@ const App: React.FC = () => {
               <Paper sx={{ p: 2 }}>
                 <TodoList_MUI
                   todos={filteredTodos}
-                  onUpdate={updateTodo}
-                  onDelete={deleteTodo}
+                  onUpdate={handleUpdateTodo}
+                  onDelete={handleDeleteTodo}
                 />
               </Paper>
             </Grid>
@@ -454,22 +467,22 @@ const App: React.FC = () => {
         />
 
         {/* Notification Snackbar */}
+        {notification && (
         <Snackbar
-          open={!!notification}
+          open
           autoHideDuration={4000}
           onClose={handleCloseNotification}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         >
-          {notification && (
-            <Alert 
-              onClose={handleCloseNotification} 
-              severity={notification.type}
-              sx={{ width: '100%' }}
-            >
-              {notification.message}
-            </Alert>
-          )}
+          <Alert
+            onClose={handleCloseNotification}
+            severity={notification.type}
+            sx={{ width: '100%' }}
+          >
+            {notification.message}
+          </Alert>
         </Snackbar>
+      )}
 
         {/* Update Notification Component */}
         <UpdateNotification />
