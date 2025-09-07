@@ -166,6 +166,7 @@
     "@mui/icons-material": "^7.3.2",
     "@mui/material": "^7.3.2",
     "@mui/system": "^7.3.2",
+    "@reduxjs/toolkit": "^2.9.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@types/uuid": "^10.0.0",
@@ -173,6 +174,7 @@
     "electron-updater": "^6.6.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-redux": "^9.2.0",
     "uuid": "^11.1.0"
   }
 }
