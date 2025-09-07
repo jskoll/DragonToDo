@@ -406,10 +406,37 @@ const App: React.FC = () => {
   return (
     <MUIThemeProvider theme={nordTheme}>
       <CssBaseline />
+      <Drawer
+        anchor="left"
+        open={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+      >
+        <Box
+          sx={{ width: 320, p: 2, height: '100%', bgcolor: 'background.paper' }}
+          role="presentation"
+        >
+            <Typography variant="h6" sx={{ mb: 2 }}>Menu</Typography>
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', mb: 2 }}>
+              <TodoForm_MUI onSubmit={handleAddTodo} />
+            </Paper>
+            <Paper sx={{ p: 2 }}>
+              <StatsPanel_MUI todos={todos} />
+            </Paper>
+        </Box>
+      </Drawer>
       <Box sx={{ flexGrow: 1, minHeight: '100vh' }}>
         {/* App Header */}
         <AppBar position="static" elevation={1}>
           <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              onClick={() => setIsDrawerOpen(true)}
+              edge="start"
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
               <img 
                 src="/logo.png" 
