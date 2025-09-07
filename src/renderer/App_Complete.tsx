@@ -490,16 +490,7 @@ const App: React.FC = () => {
         {/* Main Content */}
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={3}>
-              <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', mb: 2 }}>
-                <TodoForm_MUI onSubmit={handleAddTodo} />
-              </Paper>
-              
-              <Paper sx={{ p: 2 }}>
-                <StatsPanel_MUI todos={todos} />
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={9}>
+            <Grid item xs={12}>
               <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', mb: 2 }}>
                 <FilterBar_MUI
                   filter={filter}
