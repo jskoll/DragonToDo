@@ -7,6 +7,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
   showSaveDialog: () => ipcRenderer.invoke('show-save-dialog'),
   
+  onShowAddTaskDialog: (callback: () => void) => 
+    ipcRenderer.on('show-add-task-dialog', callback),
+  
+  removeShowAddTaskDialogListener: (callback: () => void) =>
+    ipcRenderer.removeListener('show-add-task-dialog', callback),
+
   // Update functionality
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   downloadUpdate: () => ipcRenderer.invoke('download-update'),

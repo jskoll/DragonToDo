@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, ipcMain, dialog, Notification } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, dialog, Notification, globalShortcut } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -12,6 +12,8 @@ interface ElectronAPI {
   showNotification: (title: string, body: string) => void;
   openFileDialog: () => Promise<string | undefined>;
   showSaveDialog: () => Promise<string | null>;
+  onShowAddTaskDialog: (callback: () => void) => void;
+  removeShowAddTaskDialogListener: () => void;
 }
 
 declare global {
@@ -176,6 +178,22 @@ app.whenReady().then(() => {
   createWindow();
   createMenu();
 
+  // Register a global shortcut
+  const ret = globalShortcut.register('CommandOrControl+Shift+D', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.webContents.send('show-add-task-dialog');
+    }
+  });
+
+  if (!ret) {
+    console.log('Global shortcut registration failed');
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -187,6 +205,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('will-quit', () => {
+  // Unregister all shortcuts.
+  globalShortcut.unregisterAll();
 });
 
 // IPC handlers

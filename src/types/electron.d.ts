@@ -3,6 +3,9 @@ export interface ElectronAPI {
   saveTodoFile: (content: string) => Promise<void>;
   showNotification: (title: string, body: string) => void;
   openFileDialog: () => Promise<string | undefined>;
+  showSaveDialog: () => Promise<string | null>;
+  onShowAddTaskDialog: (callback: () => void) => () => void;
+  removeShowAddTaskDialogListener: () => void;
   
   // Update functionality
   checkForUpdates: () => Promise<void>;

@@ -5,17 +5,15 @@ import {
   Card,
   CardContent,
   LinearProgress,
-  Chip,
-  Grid,
-  Divider,
+  Chip
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
   Assignment as TaskIcon,
   CheckCircle as CompletedIcon,
-  Schedule as PendingIcon,
+  Schedule,
   Flag as PriorityIcon,
-  Folder as ProjectIcon,
-  AlternateEmail as ContextIcon,
+  Folder as ProjectIcon
 } from '@mui/icons-material';
 
 import { TodoItem } from '../types/todo';
@@ -121,7 +119,7 @@ const StatsPanel_MUI: React.FC<StatsPanelProps> = ({ todos }) => {
           <Grid container spacing={1}>
             <Grid item xs={6}>
               <StatCard
-                icon={<PendingIcon fontSize="small" />}
+                icon={<Schedule fontSize="small" />}
                 title="Active"
                 value={stats.active}
                 color="primary.main"
@@ -194,7 +192,7 @@ const StatsPanel_MUI: React.FC<StatsPanelProps> = ({ todos }) => {
             />
             
             <StatCard
-              icon={<ContextIcon fontSize="small" />}
+              icon={<Schedule fontSize="small" />}
               title="Contexts"
               value={stats.contextCount}
               color="secondary.main"

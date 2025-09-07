@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { ThemeProvider as MUIThemeProvider, CssBaseline } from '@mui/material';
+import '../types/electron.d.ts';
 import { 
   AppBar, 
   Toolbar, 
@@ -14,7 +15,10 @@ import {
   Alert,
   Snackbar,
   IconButton,
-  Drawer
+  Drawer,
+  Dialog,
+  DialogTitle,
+  DialogContent
 } from '@mui/material';
 import { 
   Save as SaveIcon,
@@ -22,7 +26,9 @@ import {
   Lock as LockIcon,
   LockOpen as LockOpenIcon,
   NoteAdd as NoteAddIcon,
-  Menu as MenuIcon
+  Menu as MenuIcon,
+  AddCircleOutline as AddTaskIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 
 import { TodoItem, TodoFilter, SortField, SortDirection } from '../types/todo';
@@ -76,6 +82,7 @@ const App: React.FC = () => {
   // UI state
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   
   // Services
   const [reminderService] = useState(() => new ReminderService());
@@ -240,8 +247,13 @@ const App: React.FC = () => {
     window.electronAPI.onSaveRequest(handleSaveRequest);
     window.electronAPI.onSaveAsRequest(handleSaveAsRequest);
 
+    const showAddTaskDialogHandler = () => {
+      setShowAddTaskDialog(true);
+    };
+    window.electronAPI.onShowAddTaskDialog(showAddTaskDialogHandler);
+
     return () => {
-      // Cleanup would go here if needed
+      window.electronAPI.removeShowAddTaskDialogListener(showAddTaskDialogHandler);
     };
   }, [loadFile, saveFile]);
 
@@ -268,6 +280,11 @@ const App: React.FC = () => {
     
     setNotification({ message: 'Todo added successfully', type: 'success' });
   }, [dispatch, reminderService]);
+
+  const handleAddTaskAndCloseDialog = (newTodo: Omit<TodoItem, 'id' | 'completed' | 'creationDate' | 'rawText' | 'keyValuePairs'>) => {
+    handleAddTodo(newTodo);
+    setShowAddTaskDialog(false);
+  };
 
   const handleNewFile = async () => {
     if (isModified) {
@@ -449,10 +466,13 @@ const App: React.FC = () => {
             </Box>
             
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <IconButton color="inherit" onClick={handleNewFile}>
+              <IconButton color="inherit" onClick={() => setShowAddTaskDialog(true)} title="Add New Task">
+                <AddTaskIcon />
+              </IconButton>
+              <IconButton color="inherit" onClick={handleNewFile} title="Create New File">
                 <NoteAddIcon />
               </IconButton>
-              <IconButton color="inherit" onClick={openFile}>
+              <IconButton color="inherit" onClick={openFile} title="Open File">
                 <OpenIcon />
               </IconButton>
               
@@ -512,6 +532,28 @@ const App: React.FC = () => {
             </Grid>
           </Grid>
         </Container>
+
+        {/* Add Task Dialog */}
+        <Dialog open={showAddTaskDialog} onClose={() => setShowAddTaskDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            Add New Task
+            <IconButton
+              aria-label="close"
+              onClick={() => setShowAddTaskDialog(false)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <TodoForm_MUI onSubmit={handleAddTaskAndCloseDialog} />
+          </DialogContent>
+        </Dialog>
 
         {/* Password Dialog */}
         <PasswordDialog_MUI
