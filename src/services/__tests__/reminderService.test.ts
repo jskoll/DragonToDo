@@ -9,14 +9,13 @@ describe('ReminderService', () => {
   let mockShowNotification: jest.Mock;
 
   beforeEach(() => {
+    jest.useFakeTimers();
     service = new ReminderService();
     mockShowNotification = jest.fn();
-    
     // Mock window.electronAPI
     (window as any).electronAPI = {
       showNotification: mockShowNotification
     };
-
     // Clear all timers
     jest.clearAllTimers();
   });
@@ -28,8 +27,10 @@ describe('ReminderService', () => {
 
   describe('setupReminders', () => {
     it('should set up reminders for todos with future reminder dates', () => {
-      const futureDate = new Date(Date.now() + 60000); // 1 minute from now
-      const todos: TodoItem[] = [
+      jest.useFakeTimers();
+      const service = new ReminderService();
+      const validDate = new Date(Date.now() + 600000); // 10 minutes from now
+      const todos = [
         {
           id: '1',
           text: 'Test todo',
@@ -39,18 +40,21 @@ describe('ReminderService', () => {
           keyValuePairs: {},
           rawText: 'Test todo',
           reminder: {
-            dateTime: futureDate,
-            enabled: true
+            enabled: true,
+            date: validDate.toISOString().slice(0, 10),
+            time: validDate.toTimeString().slice(0, 5),
+            dateTime: validDate,
+            message: 'Future reminder'
           }
         }
       ];
-
       service.setupReminders(todos);
       expect(service.getActiveReminderCount()).toBe(1);
+      jest.useRealTimers();
     });
 
     it('should not set up reminders for disabled reminders', () => {
-      const futureDate = new Date(Date.now() + 60000);
+      const futureDate = new Date(Date.now() + 600000); // 10 minutes from now
       const todos: TodoItem[] = [
         {
           id: '1',
@@ -96,8 +100,8 @@ describe('ReminderService', () => {
     });
 
     it('should clear existing reminders before setting up new ones', () => {
-      const futureDate1 = new Date(Date.now() + 60000);
-      const futureDate2 = new Date(Date.now() + 120000);
+      const futureDate1 = new Date(Date.now() + 600000); // 10 minutes from now
+      const futureDate2 = new Date(Date.now() + 1200000); // 20 minutes from now
       
       const todos1: TodoItem[] = [
         {
@@ -143,7 +147,7 @@ describe('ReminderService', () => {
 
   describe('scheduleReminder', () => {
     it('should schedule a reminder for a future date', () => {
-      const futureDate = new Date(Date.now() + 60000);
+      const futureDate = new Date(Date.now() + 600000); // 10 minutes from now
       const todo: TodoItem = {
         id: '1',
         text: 'Test todo',
@@ -162,7 +166,7 @@ describe('ReminderService', () => {
       expect(service.getActiveReminderCount()).toBe(1);
 
       // Fast forward time to trigger the reminder
-      jest.advanceTimersByTime(60000);
+      jest.advanceTimersByTime(600000); // 10 minutes
       expect(mockShowNotification).toHaveBeenCalledWith('Todo Reminder', 'Test todo');
       expect(service.getActiveReminderCount()).toBe(0);
     });
@@ -189,7 +193,7 @@ describe('ReminderService', () => {
     });
 
     it('should use custom message if provided', () => {
-      const futureDate = new Date(Date.now() + 60000);
+      const futureDate = new Date(Date.now() + 600000); // 10 minutes from now
       const todo: TodoItem = {
         id: '1',
         text: 'Test todo',
@@ -206,12 +210,12 @@ describe('ReminderService', () => {
       };
 
       service.scheduleReminder(todo);
-      jest.advanceTimersByTime(60000);
+      jest.advanceTimersByTime(600000); // 10 minutes
       expect(mockShowNotification).toHaveBeenCalledWith('Todo Reminder', 'Custom reminder message');
     });
 
     it('should not schedule if reminder is disabled', () => {
-      const futureDate = new Date(Date.now() + 60000);
+      const futureDate = new Date(Date.now() + 600000); // 10 minutes from now
       const todo: TodoItem = {
         id: '1',
         text: 'Test todo',
@@ -233,7 +237,7 @@ describe('ReminderService', () => {
 
   describe('cancelReminder', () => {
     it('should cancel an active reminder', () => {
-      const futureDate = new Date(Date.now() + 60000);
+      const futureDate = new Date(Date.now() + 600000); // 10 minutes from now
       const todo: TodoItem = {
         id: '1',
         text: 'Test todo',
@@ -255,7 +259,7 @@ describe('ReminderService', () => {
       expect(service.getActiveReminderCount()).toBe(0);
 
       // Advance time to ensure notification doesn't fire
-      jest.advanceTimersByTime(60000);
+      jest.advanceTimersByTime(600000); // 10 minutes
       expect(mockShowNotification).not.toHaveBeenCalled();
     });
 
@@ -266,8 +270,8 @@ describe('ReminderService', () => {
 
   describe('clearAllReminders', () => {
     it('should clear all active reminders', () => {
-      const futureDate1 = new Date(Date.now() + 60000);
-      const futureDate2 = new Date(Date.now() + 120000);
+      const futureDate1 = new Date(Date.now() + 600000); // 10 minutes from now
+      const futureDate2 = new Date(Date.now() + 1200000); // 20 minutes from now
       
       const todos: TodoItem[] = [
         {
@@ -299,7 +303,7 @@ describe('ReminderService', () => {
       expect(service.getActiveReminderCount()).toBe(0);
 
       // Advance time to ensure no notifications fire
-      jest.advanceTimersByTime(120000);
+      jest.advanceTimersByTime(1200000); // 20 minutes
       expect(mockShowNotification).not.toHaveBeenCalled();
     });
   });

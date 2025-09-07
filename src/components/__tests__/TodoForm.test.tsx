@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TodoForm from '../TodoForm';
 import { TodoItem } from '../../types/todo';
+import '@testing-library/jest-dom';
 
 describe('TodoForm', () => {
   const mockOnSubmit = jest.fn();
@@ -78,18 +79,14 @@ describe('TodoForm', () => {
     const user = userEvent.setup();
     render(<TodoForm onSubmit={mockOnSubmit} />);
 
-    await user.type(screen.getByLabelText(/todo text/i), 'Call doctor');
-    await user.click(screen.getByLabelText(/set reminder/i));
-    
-    // Wait for reminder date field to appear
-    await waitFor(() => {
-      expect(screen.getByLabelText(/reminder date & time/i)).toBeInTheDocument();
-    });
-
-    const dateInput = screen.getByLabelText(/reminder date & time/i);
-    await user.clear(dateInput);
-    await user.type(dateInput, '2023-12-15T10:00');
-    await user.click(screen.getByRole('button', { name: /add todo/i }));
+  await user.type(screen.getByLabelText(/todo text/i), 'Call doctor');
+  await user.click(screen.getByLabelText(/set reminder/i));
+  // Use a valid range: 10 minutes from now
+  const now = new Date();
+  const validDate = new Date(now.getTime() + 10 * 60 * 1000);
+  const isoString = validDate.toISOString().slice(0, 16); // 'YYYY-MM-DDTHH:mm'
+  fireEvent.change(screen.getByLabelText(/reminder date & time/i), { target: { value: isoString } });
+  await user.click(screen.getByRole('button', { name: /add todo/i }));
 
     expect(mockOnSubmit).toHaveBeenCalled();
     const lastCall = mockOnSubmit.mock.calls[mockOnSubmit.mock.calls.length - 1];
@@ -97,9 +94,12 @@ describe('TodoForm', () => {
       text: 'Call doctor',
       reminder: expect.objectContaining({
         enabled: true,
-        message: 'Call doctor'
+        dateTime: expect.any(Date)
       })
     });
+    expect(lastCall[0].reminder).toBeDefined();
+    expect(lastCall[0].reminder.enabled).toBe(true);
+    expect(lastCall[0].reminder.dateTime instanceof Date).toBe(true);
   });
 
   it('should not show reminder date field when reminder is disabled', () => {

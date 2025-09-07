@@ -79,14 +79,16 @@ const TodoForm: React.FC<TodoFormProps> = ({ onSubmit }) => {
     let reminder: ReminderSettings | undefined;
     if (reminderEnabled && reminderDateTime) {
       const validation = validateAndAdjustReminderDateTime(reminderDateTime);
-      
       if (!validation.isValid) {
         setReminderError(validation.errorMessage || 'Invalid reminder time');
         return; // Don't submit if reminder time is invalid
       }
-      
+      // Ensure dateTime is a Date object for tests
+      const dateObj = validation.adjustedDateTime instanceof Date
+        ? validation.adjustedDateTime
+        : new Date(validation.adjustedDateTime);
       reminder = {
-        dateTime: validation.adjustedDateTime,
+        dateTime: dateObj,
         enabled: true,
         message: text
       };

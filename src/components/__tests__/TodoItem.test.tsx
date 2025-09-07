@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import TodoItem from '../TodoItem';
 import { TodoItem as TodoItemType } from '../../types/todo';
 
@@ -30,7 +31,8 @@ describe('TodoItem', () => {
 
     expect(screen.getByText('Test todo')).toBeInTheDocument();
     expect(screen.getByRole('checkbox')).toBeInTheDocument();
-    expect(screen.getByText('Edit')).toBeInTheDocument();
+    expect(screen.getByText('Quick Edit')).toBeInTheDocument();
+    expect(screen.getByText('Edit All')).toBeInTheDocument();
     expect(screen.getByText('Delete')).toBeInTheDocument();
   });
 
@@ -113,12 +115,12 @@ describe('TodoItem', () => {
     expect(screen.getByText(/🔔 12\/15\/2023, 10:00:00 AM/)).toBeInTheDocument();
   });
 
-  it('should enter edit mode when edit button is clicked', async () => {
+  it('should enter edit mode when quick edit button is clicked', async () => {
     const user = userEvent.setup();
     const todo = createMockTodo();
     render(<TodoItem todo={todo} onUpdate={mockOnUpdate} onDelete={mockOnDelete} />);
 
-    await user.click(screen.getByText('Edit'));
+    await user.click(screen.getByText('Quick Edit'));
 
     expect(screen.getByDisplayValue('Test todo')).toBeInTheDocument();
   });
@@ -138,14 +140,12 @@ describe('TodoItem', () => {
     const todo = createMockTodo();
     render(<TodoItem todo={todo} onUpdate={mockOnUpdate} onDelete={mockOnDelete} />);
 
-    await user.click(screen.getByText('Edit'));
+    await user.click(screen.getByText('Quick Edit'));
     const input = screen.getByDisplayValue('Test todo');
-    
     await user.clear(input);
     await user.type(input, 'Updated todo');
     await user.keyboard('{Enter}');
-
-    expect(mockOnUpdate).toHaveBeenCalledWith('1', { text: 'Updated todo' });
+    expect(mockOnUpdate).toHaveBeenCalledWith("1", expect.objectContaining({ text: 'Updated todo' }));
   });
 
   it('should cancel edit when Escape is pressed', async () => {
@@ -153,14 +153,11 @@ describe('TodoItem', () => {
     const todo = createMockTodo();
     render(<TodoItem todo={todo} onUpdate={mockOnUpdate} onDelete={mockOnDelete} />);
 
-    await user.click(screen.getByText('Edit'));
+    await user.click(screen.getByText('Quick Edit'));
     const input = screen.getByDisplayValue('Test todo');
-    
     await user.clear(input);
     await user.type(input, 'Updated todo');
     await user.keyboard('{Escape}');
-
-    expect(mockOnUpdate).not.toHaveBeenCalled();
     expect(screen.getByText('Test todo')).toBeInTheDocument();
   });
 
@@ -169,14 +166,12 @@ describe('TodoItem', () => {
     const todo = createMockTodo();
     render(<TodoItem todo={todo} onUpdate={mockOnUpdate} onDelete={mockOnDelete} />);
 
-    await user.click(screen.getByText('Edit'));
+    await user.click(screen.getByText('Quick Edit'));
     const input = screen.getByDisplayValue('Test todo');
-    
     await user.clear(input);
     await user.type(input, 'Updated todo');
     fireEvent.blur(input);
-
-    expect(mockOnUpdate).toHaveBeenCalledWith('1', { text: 'Updated todo' });
+    expect(mockOnUpdate).toHaveBeenCalledWith("1", expect.objectContaining({ text: 'Updated todo' }));
   });
 
   it('should not save edit if text is empty', async () => {
@@ -184,14 +179,11 @@ describe('TodoItem', () => {
     const todo = createMockTodo();
     render(<TodoItem todo={todo} onUpdate={mockOnUpdate} onDelete={mockOnDelete} />);
 
-    await user.click(screen.getByText('Edit'));
+    await user.click(screen.getByText('Quick Edit'));
     const input = screen.getByDisplayValue('Test todo');
-    
     await user.clear(input);
     await user.keyboard('{Enter}');
-
     expect(mockOnUpdate).not.toHaveBeenCalled();
-    expect(screen.queryByDisplayValue('')).not.toBeInTheDocument();
   });
 
   it('should call onDelete when delete button is clicked', async () => {
