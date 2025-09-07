@@ -66,10 +66,6 @@ temp/
 # Optional eslint cache
 .eslintcache
 
-# Package managers
-package-lock.json
-yarn.lock
-
 # Test artifacts
 test-results/
 playwright-report/
