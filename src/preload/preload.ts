@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveTodoFile: (content: string) => ipcRenderer.invoke('save-todo-file', content),
   showNotification: (title: string, body: string) => ipcRenderer.invoke('show-notification', title, body),
   openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
+  showSaveDialog: () => ipcRenderer.invoke('show-save-dialog'),
   
   // Update functionality
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
