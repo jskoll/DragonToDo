@@ -114,33 +114,67 @@ function createMenu(): void {
               mainWindow.webContents.send('save-as-request', currentFilePath);
             }
           }
+        },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        {
+          label: 'Undo',
+          accelerator: 'CmdOrCtrl+Z',
+          role: 'undo'
+        },
+        {
+          label: 'Redo',
+          accelerator: 'CmdOrCtrl+Y',
+          role: 'redo'
+        },
+        { type: 'separator' },
+        {
+          label: 'Cut',
+          accelerator: 'CmdOrCtrl+X',
+          role: 'cut'
+        },
+        {
+          label: 'Copy',
+          accelerator: 'CmdOrCtrl+C',
+          role: 'copy'
+        },
+        {
+          label: 'Paste',
+          accelerator: 'CmdOrCtrl+V',
+          role: 'paste'
+        },
+        {
+          label: 'Select All',
+          accelerator: 'CmdOrCtrl+A',
+          role: 'selectall'
+        },
+        { type: 'separator' },
+        {
+          label: 'Toggle Full Screen',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => {
+            if (mainWindow) {
+              const isFullScreen = mainWindow.isFullScreen();
+              mainWindow.setFullScreen(!isFullScreen);
+            }
+          }
         }
       ]
     },
     {
       label: 'Help',
+      role: 'help',
       submenu: [
         {
-          label: 'Check for Updates',
+          label: 'Learn More',
           click: async () => {
-            try {
-              await updateService.checkForUpdates();
-              if (!updateService.isUpdateReady()) {
-                await dialog.showMessageBox(mainWindow, {
-                  type: 'info',
-                  title: 'No Updates',
-                  message: 'DragonToDo is up to date',
-                  detail: 'You have the latest version installed.'
-                });
-              }
-            } catch (error) {
-              await dialog.showMessageBox(mainWindow, {
-                type: 'error',
-                title: 'Update Check Failed',
-                message: 'Unable to check for updates',
-                detail: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-              });
-            }
+            const { shell } = require('electron');
+            await shell.openExternal('https://github.com/jskoll/DragonToDo');
           }
         }
       ]
