@@ -89,10 +89,10 @@ function createMenu(): void {
           accelerator: 'CmdOrCtrl+Shift+S',
           click: async () => {
             const result = await dialog.showSaveDialog(mainWindow, {
+              defaultPath: currentFilePath || 'untitled.dtd',
               filters: [
                 { name: 'DragonToDo files', extensions: ['dtd'] },
-                { name: 'Todo.txt files', extensions: ['txt'] },
-                { name: 'All files', extensions: ['*'] }
+                { name: 'Todo.txt files', extensions: ['txt'] }
               ]
             });
 
