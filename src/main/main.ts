@@ -21,8 +21,7 @@ declare global {
 }
 
 let mainWindow: BrowserWindow;
-let currentFilePath: string | undefined;
-let updateService: UpdateService;
+let currentFilePath: string | null = null;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -51,18 +50,6 @@ function createWindow(): void {
   mainWindow.on('closed', () => {
     mainWindow = null as any;
   });
-
-  // Initialize update service
-  updateService = new UpdateService(mainWindow);
-
-  // Check for updates on app startup (after a delay to let the app load)
-  setTimeout(() => {
-    if (process.env.NODE_ENV !== 'development') {
-      updateService.checkForUpdates().catch(error => {
-        console.log('Update check failed:', error);
-      });
-    }
-  }, 5000);
 }
 
 function createMenu(): void {
@@ -256,35 +243,4 @@ ipcMain.handle('show-save-dialog', async () => {
     return filePath;
   }
   return null;
-});
-
-// Update-related IPC handlers
-ipcMain.handle('check-for-updates', async (): Promise<void> => {
-  try {
-    await updateService.checkForUpdates();
-  } catch (error) {
-    console.error('Manual update check failed:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('download-update', async (): Promise<void> => {
-  try {
-    await updateService.downloadUpdate();
-  } catch (error) {
-    console.error('Update download failed:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('install-update', (): void => {
-  updateService.installUpdate();
-});
-
-ipcMain.handle('get-update-info', (): any => {
-  return updateService.getUpdateInfo();
-});
-
-ipcMain.handle('is-update-available', (): boolean => {
-  return updateService.isUpdateReady();
 });
