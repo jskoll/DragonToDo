@@ -201,22 +201,28 @@ ipcMain.handle('show-notification', (_event, title: string, body: string): void 
   }
 });
 
-ipcMain.handle('open-file-dialog', async (): Promise<string | undefined> => {
-  const result = await dialog.showOpenDialog(mainWindow, {
+ipcMain.handle('open-file-dialog', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [
-      { name: 'DragonToDo files', extensions: ['dtd'] },
-      { name: 'Todo.txt files', extensions: ['txt'] },
-      { name: 'All files', extensions: ['*'] }
-    ]
+    filters: [{ name: 'Todo Files', extensions: ['dtd', 'txt'] }],
   });
-
-  if (!result.canceled && result.filePaths.length > 0) {
-    currentFilePath = result.filePaths[0];
+  if (!canceled && filePaths.length > 0) {
+    currentFilePath = filePaths[0];
     return currentFilePath;
   }
+  return null;
+});
 
-  return undefined;
+ipcMain.handle('show-save-dialog', async () => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    defaultPath: 'untitled.dtd',
+    filters: [{ name: 'Todo Files', extensions: ['dtd', 'txt'] }],
+  });
+  if (!canceled && filePath) {
+    currentFilePath = filePath;
+    return filePath;
+  }
+  return null;
 });
 
 // Update-related IPC handlers
