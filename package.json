@@ -1,6 +1,6 @@
 {
   "name": "dragon-todo",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "main": "dist/main/main.js",
   "homepage": "./",
   "scripts": {
@@ -93,9 +93,8 @@
           ]
         }
       ],
-      "icon": "assets/logo.png",
-      "publisherName": "DragonToDo",
-      "verifyUpdateCodeSignature": false
+  "icon": "assets/logo.png",
+  "verifyUpdateCodeSignature": false
     },
     "linux": {
       "target": [
@@ -123,11 +122,7 @@
       "icon": "assets/logo.png",
       "category": "Office",
       "maintainer": "DragonToDo <noreply@dragontodo.dev>",
-      "desktop": {
-        "Name": "DragonToDo",
-        "Comment": "Encrypted todo.txt manager with Nord theme",
-        "Keywords": "todo;productivity;gtd;encryption;"
-      }
+  "desktop": {}
     },
     "nsis": {
       "oneClick": false,
