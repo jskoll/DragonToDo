@@ -1,18 +1,17 @@
-import { app, BrowserWindow, Menu, dialog, ipcMain, Notification } from 'electron';
-import * as path from 'path';
+import { app, BrowserWindow, Menu, ipcMain, dialog, Notification } from 'electron';
 import * as fs from 'fs/promises';
-import { UpdateService } from '../services/updateService';
+import * as path from 'path';
+
+try {
+  require('electron-reloader')(module);
+} catch (_) {}
 
 interface ElectronAPI {
   loadTodoFile: () => Promise<string>;
   saveTodoFile: (content: string) => Promise<void>;
   showNotification: (title: string, body: string) => void;
   openFileDialog: () => Promise<string | undefined>;
-  checkForUpdates: () => Promise<void>;
-  downloadUpdate: () => Promise<void>;
-  installUpdate: () => void;
-  getUpdateInfo: () => any;
-  isUpdateAvailable: () => boolean;
+  showSaveDialog: () => Promise<string | null>;
 }
 
 declare global {
