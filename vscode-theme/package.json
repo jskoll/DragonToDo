@@ -1,0 +1,35 @@
+{
+  "name": "dragon-todo-theme",
+  "displayName": "DragonToDo Theme",
+  "description": "A dark VS Code theme inspired by DragonToDo's swamp depths and dragon colors",
+  "version": "1.0.0",
+  "publisher": "dragontodo",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "keywords": [
+    "theme",
+    "dark theme",
+    "dragon",
+    "productivity",
+    "green"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "DragonToDo Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/dragon-todo-dark.json"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jskoll/DragonToDo"
+  },
+  "license": "MIT",
+  "icon": "icon.png"
+}
