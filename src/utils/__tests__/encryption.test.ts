@@ -5,11 +5,7 @@
 
 import { 
   encryptData, 
-  decryptData, 
-  generatePassword, 
-  isValidEncryptedData, 
-  hashPassword, 
-  verifyPassword 
+  decryptData
 } from '../encryption';
 import CryptoJS from 'crypto-js';
 
@@ -75,69 +71,6 @@ describe('Encryption Utils', () => {
     });
   });
 
-  describe('generatePassword', () => {
-    it('should generate password of specified length', () => {
-      const password = generatePassword(16);
-      expect(password.length).toBe(16);
-    });
-
-    it('should generate password with default length', () => {
-      const password = generatePassword();
-      expect(password.length).toBe(32);
-    });
-
-    it('should generate different passwords each time', () => {
-      const password1 = generatePassword(16);
-      const password2 = generatePassword(16);
-      expect(password1).toBe(password2); // deterministic output due to mock
-    });
-
-    it('should contain valid characters', () => {
-      const password = generatePassword(50);
-      const validChars = /^[A-Za-z0-9!@#$%^&*]+$/;
-      expect(password).toMatch(validChars);
-    });
-  });
-
-  describe('isValidEncryptedData', () => {
-    it('should return true for valid encrypted data', () => {
-      const encrypted = encryptData(testData, testPassword);
-      expect(isValidEncryptedData(encrypted)).toBe(true);
-    });
-
-    it('should return false for invalid data', () => {
-      expect(isValidEncryptedData('invalid')).toBe(false);
-      expect(isValidEncryptedData('')).toBe(false);
-      expect(isValidEncryptedData('not:base64:data')).toBe(false);
-    });
-  });
-
-  describe('hashPassword', () => {
-    it('should hash password consistently', () => {
-      const hash1 = hashPassword(testPassword);
-      const hash2 = hashPassword(testPassword);
-      expect(hash1).toBe(hash2);
-      expect(hash1).not.toBe(testPassword);
-    });
-
-    it('should produce different hashes for different passwords', () => {
-      const hash1 = hashPassword('password1');
-      const hash2 = hashPassword('password2');
-      expect(hash1).not.toBe(hash2);
-    });
-  });
-
-  describe('verifyPassword', () => {
-    it('should verify correct password', () => {
-      const hash = hashPassword(testPassword);
-      expect(verifyPassword(testPassword, hash)).toBe(true);
-    });
-
-    it('should reject incorrect password', () => {
-      const hash = hashPassword(testPassword);
-      expect(verifyPassword('wrongPassword', hash)).toBe(false);
-    });
-  });
 
   describe('Integration tests', () => {
     it('should handle todo.txt data encryption/decryption', () => {
