@@ -253,6 +253,9 @@ const App: React.FC = () => {
     window.electronAPI.onShowAddTaskDialog(showAddTaskDialogHandler);
 
     return () => {
+      window.electronAPI.removeFileLoadedListener();
+      window.electronAPI.removeSaveRequestListener();
+      window.electronAPI.removeSaveAsRequestListener();
       window.electronAPI.removeShowAddTaskDialogListener(showAddTaskDialogHandler);
     };
   }, [loadFile, saveFile]);

@@ -23,10 +23,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Listen for menu events
   onFileLoaded: (callback: (content: string, filePath: string) => void) => 
     ipcRenderer.on('file-loaded', (_event, content, filePath) => callback(content, filePath)),
+  removeFileLoadedListener: () =>
+    ipcRenderer.removeAllListeners('file-loaded'),
   onSaveRequest: (callback: () => void) => 
     ipcRenderer.on('save-request', () => callback()),
+  removeSaveRequestListener: () =>
+    ipcRenderer.removeAllListeners('save-request'),
   onSaveAsRequest: (callback: (filePath: string) => void) => 
     ipcRenderer.on('save-as-request', (_event, filePath) => callback(filePath)),
+  removeSaveAsRequestListener: () =>
+    ipcRenderer.removeAllListeners('save-as-request'),
     
   // Listen for update events
   onUpdateAvailable: (callback: (info: any) => void) => 

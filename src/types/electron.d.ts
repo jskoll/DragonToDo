@@ -5,7 +5,7 @@ export interface ElectronAPI {
   openFileDialog: () => Promise<string | undefined>;
   showSaveDialog: () => Promise<string | null>;
   onShowAddTaskDialog: (callback: () => void) => () => void;
-  removeShowAddTaskDialogListener: () => void;
+  removeShowAddTaskDialogListener: (callback: () => void) => void;
   
   // Update functionality
   checkForUpdates: () => Promise<void>;
@@ -16,8 +16,11 @@ export interface ElectronAPI {
   
   // Listen for menu events
   onFileLoaded: (callback: (content: string, filePath: string) => void) => void;
+  removeFileLoadedListener: () => void;
   onSaveRequest: (callback: () => void) => void;
+  removeSaveRequestListener: () => void;
   onSaveAsRequest: (callback: (filePath: string) => void) => void;
+  removeSaveAsRequestListener: () => void;
   
   // Listen for update events
   onUpdateAvailable: (callback: (info: any) => void) => void;
