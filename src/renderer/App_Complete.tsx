@@ -326,20 +326,18 @@ const App: React.FC = () => {
   const handleUpdateTodo = useCallback((id: string, updates: Partial<TodoItem>) => {
     dispatch(updateTodoAction({ id, updates }));
     setIsModified(true);
-    
-    // Update reminders
-    const updatedTodo = todos.find(t => t.id === id);
-    if (updatedTodo) {
-      const newTodo = { ...updatedTodo, ...updates };
-      if (newTodo.reminder?.enabled) {
-        reminderService.setupReminders([newTodo]);
+
+    // Update reminders based on the updates being applied
+    if (updates.reminder !== undefined) {
+      if (updates.reminder?.enabled) {
+        reminderService.setupReminders([{ id, ...updates } as TodoItem]);
       } else {
         reminderService.cancelReminder(id);
       }
     }
-    
+
     setNotification({ message: 'Todo updated successfully', type: 'success' });
-  }, [dispatch, todos, reminderService]);
+  }, [dispatch, reminderService]);
 
   /**
    * Deletes a todo item
