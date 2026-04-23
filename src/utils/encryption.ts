@@ -1,5 +1,7 @@
 import CryptoJS from 'crypto-js';
 
+export const ENCRYPTION_HEADER = 'DTD-ENCRYPTED-V1:';
+
 export interface EncryptionOptions {
   iterations?: number;
   keySize?: number;

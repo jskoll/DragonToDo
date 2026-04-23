@@ -34,7 +34,7 @@ import {
 import { TodoItem, TodoFilter, SortField, SortDirection } from '../types/todo';
 import { TodoParser } from '../utils/todoParser';
 import { ReminderService } from '../services/reminderService';
-import { encryptData, decryptData } from '../utils/encryption';
+import { encryptData, decryptData, ENCRYPTION_HEADER } from '../utils/encryption';
 import nordTheme from '../theme/nordTheme';
 
 import { RootState, AppDispatch } from '../store/store';
@@ -93,9 +93,11 @@ const App: React.FC = () => {
   const loadFile = useCallback(async (content: string, filePath?: string, filePassword?: string) => {
     try {
       let todoContent = content;
-      
-      // Check if content is encrypted
-      if (content.startsWith('ENCRYPTED:')) {
+
+      // Check if content is encrypted (support both new and legacy headers)
+      const isEncryptedNew = content.startsWith(ENCRYPTION_HEADER);
+      const isEncryptedLegacy = content.startsWith('ENCRYPTED:');
+      if (isEncryptedNew || isEncryptedLegacy) {
         if (!filePassword) {
           if (filePath) {
             setPendingFile({ filePath, content });
@@ -104,32 +106,33 @@ const App: React.FC = () => {
           setShowPasswordDialog(true);
           return;
         }
-        
-        const encryptedData = content.replace('ENCRYPTED:', '');
+
+        const prefix = isEncryptedNew ? ENCRYPTION_HEADER : 'ENCRYPTED:';
+        const encryptedData = content.replace(prefix, '');
         todoContent = decryptData(encryptedData, filePassword);
         setIsEncrypted(true);
         setPassword(filePassword);
       }
-      
+
       const parsedTodos = TodoParser.parseFile(todoContent);
       dispatch(setTodos(parsedTodos));
       if (filePath) {
         setCurrentFilePath(filePath);
       }
       setIsModified(false);
-      
+
       // Set up reminders for todos with reminder settings
       const todosWithReminders = parsedTodos.filter(todo => todo.reminder?.enabled);
       if (todosWithReminders.length > 0) {
         reminderService.setupReminders(todosWithReminders);
       }
-      
+
       setNotification({ message: `Loaded ${parsedTodos.length} todos`, type: 'success' });
     } catch (error) {
       console.error('Error loading file:', error);
-      setNotification({ 
-        message: error instanceof Error ? error.message : 'Failed to load file', 
-        type: 'error' 
+      setNotification({
+        message: error instanceof Error ? error.message : 'Failed to load file',
+        type: 'error'
       });
     }
   }, [dispatch, reminderService]);
@@ -145,7 +148,7 @@ const App: React.FC = () => {
       
       // Encrypt if password is set
       if (isEncrypted && password) {
-        content = 'ENCRYPTED:' + encryptData(content, password);
+        content = ENCRYPTION_HEADER + encryptData(content, password);
       }
       
       // Update file extension to .dtd if not already
