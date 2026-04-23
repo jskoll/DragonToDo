@@ -1,5 +1,4 @@
 import { TodoItem, ReminderSettings } from '../types/todo';
-import { v4 as uuidv4 } from 'uuid';
 
 export class TodoParser {
   private static readonly PRIORITY_REGEX = /^\(([A-Z])\)\s*/;
@@ -86,7 +85,7 @@ export class TodoParser {
       .trim();
 
     return {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       text: cleanText,
       completed,
       priority,
