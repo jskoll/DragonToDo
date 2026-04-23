@@ -7,7 +7,7 @@ export interface EncryptionOptions {
 }
 
 const DEFAULT_OPTIONS: Required<EncryptionOptions> = {
-  iterations: 10000,
+  iterations: 100000,
   keySize: 256 / 32,
   ivSize: 128 / 32,
 };
