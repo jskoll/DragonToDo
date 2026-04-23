@@ -2,9 +2,11 @@ import { app, BrowserWindow, Menu, ipcMain, dialog, Notification, globalShortcut
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-try {
-  require('electron-reloader')(module);
-} catch (_) {}
+if (process.env.NODE_ENV === 'development') {
+  try {
+    require('electron-reloader')(module);
+  } catch (_) {}
+}
 
 let mainWindow: BrowserWindow;
 let currentFilePath: string | null = null;
