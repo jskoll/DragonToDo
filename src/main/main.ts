@@ -6,22 +6,6 @@ try {
   require('electron-reloader')(module);
 } catch (_) {}
 
-interface ElectronAPI {
-  loadTodoFile: () => Promise<string>;
-  saveTodoFile: (content: string) => Promise<void>;
-  showNotification: (title: string, body: string) => void;
-  openFileDialog: () => Promise<string | undefined>;
-  showSaveDialog: () => Promise<string | null>;
-  onShowAddTaskDialog: (callback: () => void) => void;
-  removeShowAddTaskDialogListener: () => void;
-}
-
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
-}
-
 let mainWindow: BrowserWindow;
 let currentFilePath: string | null = null;
 
