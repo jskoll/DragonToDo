@@ -1,3 +1,17 @@
+export interface UpdateInfo {
+  version: string;
+  releaseNotes?: string | null;
+  releaseName?: string;
+  releaseDate?: string;
+}
+
+export interface DownloadProgress {
+  percent: number;
+  bytesPerSecond: number;
+  total: number;
+  transferred: number;
+}
+
 export interface ElectronAPI {
   loadTodoFile: () => Promise<string>;
   saveTodoFile: (content: string) => Promise<void>;
@@ -6,14 +20,14 @@ export interface ElectronAPI {
   showSaveDialog: () => Promise<string | null>;
   onShowAddTaskDialog: (callback: () => void) => () => void;
   removeShowAddTaskDialogListener: (callback: () => void) => void;
-  
+
   // Update functionality
   checkForUpdates: () => Promise<void>;
   downloadUpdate: () => Promise<void>;
   installUpdate: () => void;
-  getUpdateInfo: () => any;
+  getUpdateInfo: () => UpdateInfo | null;
   isUpdateAvailable: () => boolean;
-  
+
   // Listen for menu events
   onFileLoaded: (callback: (content: string, filePath: string) => void) => void;
   removeFileLoadedListener: () => void;
@@ -21,11 +35,11 @@ export interface ElectronAPI {
   removeSaveRequestListener: () => void;
   onSaveAsRequest: (callback: (filePath: string) => void) => void;
   removeSaveAsRequestListener: () => void;
-  
+
   // Listen for update events
-  onUpdateAvailable: (callback: (info: any) => void) => void;
-  onUpdateDownloaded: (callback: (info: any) => void) => void;
-  onUpdateDownloadProgress: (callback: (progress: any) => void) => void;
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => void;
+  onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => void;
+  onUpdateDownloadProgress: (callback: (progress: DownloadProgress) => void) => void;
   onUpdateError: (callback: (error: string) => void) => void;
 }
 

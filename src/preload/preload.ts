@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { UpdateInfo, DownloadProgress } from '../types/electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   loadTodoFile: () => ipcRenderer.invoke('load-todo-file'),
@@ -6,10 +7,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showNotification: (title: string, body: string) => ipcRenderer.invoke('show-notification', title, body),
   openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
   showSaveDialog: () => ipcRenderer.invoke('show-save-dialog'),
-  
-  onShowAddTaskDialog: (callback: () => void) => 
+
+  onShowAddTaskDialog: (callback: () => void) =>
     ipcRenderer.on('show-add-task-dialog', callback),
-  
+
   removeShowAddTaskDialogListener: (callback: () => void) =>
     ipcRenderer.removeListener('show-add-task-dialog', callback),
 
@@ -19,28 +20,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installUpdate: () => ipcRenderer.invoke('install-update'),
   getUpdateInfo: () => ipcRenderer.invoke('get-update-info'),
   isUpdateAvailable: () => ipcRenderer.invoke('is-update-available'),
-  
+
   // Listen for menu events
-  onFileLoaded: (callback: (content: string, filePath: string) => void) => 
+  onFileLoaded: (callback: (content: string, filePath: string) => void) =>
     ipcRenderer.on('file-loaded', (_event, content, filePath) => callback(content, filePath)),
   removeFileLoadedListener: () =>
     ipcRenderer.removeAllListeners('file-loaded'),
-  onSaveRequest: (callback: () => void) => 
+  onSaveRequest: (callback: () => void) =>
     ipcRenderer.on('save-request', () => callback()),
   removeSaveRequestListener: () =>
     ipcRenderer.removeAllListeners('save-request'),
-  onSaveAsRequest: (callback: (filePath: string) => void) => 
+  onSaveAsRequest: (callback: (filePath: string) => void) =>
     ipcRenderer.on('save-as-request', (_event, filePath) => callback(filePath)),
   removeSaveAsRequestListener: () =>
     ipcRenderer.removeAllListeners('save-as-request'),
-    
+
   // Listen for update events
-  onUpdateAvailable: (callback: (info: any) => void) => 
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) =>
     ipcRenderer.on('update-available', (_event, info) => callback(info)),
-  onUpdateDownloaded: (callback: (info: any) => void) => 
+  onUpdateDownloaded: (callback: (info: UpdateInfo) => void) =>
     ipcRenderer.on('update-downloaded', (_event, info) => callback(info)),
-  onUpdateDownloadProgress: (callback: (progress: any) => void) => 
+  onUpdateDownloadProgress: (callback: (progress: DownloadProgress) => void) =>
     ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress)),
-  onUpdateError: (callback: (error: string) => void) => 
+  onUpdateError: (callback: (error: string) => void) =>
     ipcRenderer.on('update-error', (_event, error) => callback(error)),
 });

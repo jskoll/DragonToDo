@@ -149,10 +149,10 @@ export class UpdateService {
    * Notify the renderer process that update has been downloaded
    * @param info - Update information
    */
-  private async notifyUpdateDownloaded(info: any): Promise<void> {
+  private async notifyUpdateDownloaded(info: ElectronUpdateInfo): Promise<void> {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send('update-downloaded', info);
-      
+
       // Show install dialog
       const shouldInstall = await this.showInstallDialog(info);
       if (shouldInstall) {
@@ -201,7 +201,12 @@ export class UpdateService {
       if (typeof info.releaseNotes === 'string') {
         detailMessage += `\n\nRelease Notes:\n${info.releaseNotes}`;
       } else if (Array.isArray(info.releaseNotes)) {
-        const notes = info.releaseNotes.map((note: any) => `• ${note.note || note}`).join('\n');
+        const notes = info.releaseNotes.map((note: { note?: string | null } | string) => {
+          if (typeof note === 'object') {
+            return `• ${note.note || ''}`;
+          }
+          return `• ${note}`;
+        }).join('\n');
         detailMessage += `\n\nWhat's New:\n${notes}`;
       }
     }
