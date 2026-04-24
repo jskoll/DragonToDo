@@ -12,7 +12,8 @@
     "noEmit": false
   },
   "include": [
-    "src/main/**/*"
+    "src/main/**/*",
+    "src/constants/**/*"
   ],
   "exclude": [
     "node_modules",

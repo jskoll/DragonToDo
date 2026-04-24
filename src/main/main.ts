@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, ipcMain, dialog, Notification, globalShortcut } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { IPC_CHANNELS } from '../constants/ipcChannels';
 
 if (process.env.NODE_ENV === 'development') {
   try {
@@ -61,7 +62,7 @@ function createMenu(): void {
             if (!result.canceled && result.filePaths.length > 0) {
               currentFilePath = result.filePaths[0];
               const content = await fs.readFile(currentFilePath, 'utf-8');
-              mainWindow.webContents.send('file-loaded', content, currentFilePath);
+              mainWindow.webContents.send(IPC_CHANNELS.FILE_LOADED, content, currentFilePath);
             }
           }
         },
@@ -69,7 +70,7 @@ function createMenu(): void {
           label: 'Save',
           accelerator: 'CmdOrCtrl+S',
           click: () => {
-            mainWindow.webContents.send('save-request');
+            mainWindow.webContents.send(IPC_CHANNELS.SAVE_REQUEST);
           }
         },
         {
@@ -86,7 +87,7 @@ function createMenu(): void {
 
             if (!result.canceled && result.filePath) {
               currentFilePath = result.filePath;
-              mainWindow.webContents.send('save-as-request', currentFilePath);
+              mainWindow.webContents.send(IPC_CHANNELS.SAVE_AS_REQUEST, currentFilePath);
             }
           }
         },
@@ -172,7 +173,7 @@ app.whenReady().then(() => {
       }
       mainWindow.show();
       mainWindow.focus();
-      mainWindow.webContents.send('show-add-task-dialog');
+      mainWindow.webContents.send(IPC_CHANNELS.SHOW_ADD_TASK_DIALOG);
     }
   });
 
@@ -199,7 +200,7 @@ app.on('will-quit', () => {
 });
 
 // IPC handlers
-ipcMain.handle('load-todo-file', async (): Promise<string> => {
+ipcMain.handle(IPC_CHANNELS.LOAD_TODO_FILE, async (): Promise<string> => {
   if (currentFilePath) {
     try {
       return await fs.readFile(currentFilePath, 'utf-8');
@@ -211,7 +212,7 @@ ipcMain.handle('load-todo-file', async (): Promise<string> => {
   return '';
 });
 
-ipcMain.handle('save-todo-file', async (_event, content: string): Promise<void> => {
+ipcMain.handle(IPC_CHANNELS.SAVE_TODO_FILE, async (_event, content: string): Promise<void> => {
   if (currentFilePath) {
     try {
       await fs.writeFile(currentFilePath, content, 'utf-8');
@@ -224,13 +225,13 @@ ipcMain.handle('save-todo-file', async (_event, content: string): Promise<void> 
   }
 });
 
-ipcMain.handle('show-notification', (_event, title: string, body: string): void => {
+ipcMain.handle(IPC_CHANNELS.SHOW_NOTIFICATION, (_event, title: string, body: string): void => {
   if (Notification.isSupported()) {
     new Notification({ title, body }).show();
   }
 });
 
-ipcMain.handle('open-file-dialog', async () => {
+ipcMain.handle(IPC_CHANNELS.OPEN_FILE_DIALOG, async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile'],
     filters: [{ name: 'Todo Files', extensions: ['dtd', 'txt'] }],
@@ -242,7 +243,7 @@ ipcMain.handle('open-file-dialog', async () => {
   return null;
 });
 
-ipcMain.handle('show-save-dialog', async () => {
+ipcMain.handle(IPC_CHANNELS.SHOW_SAVE_DIALOG, async () => {
   const { canceled, filePath } = await dialog.showSaveDialog({
     defaultPath: 'untitled.dtd',
     filters: [{ name: 'Todo Files', extensions: ['dtd', 'txt'] }],

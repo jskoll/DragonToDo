@@ -1,47 +1,48 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { UpdateInfo, DownloadProgress } from '../types/electron';
+import { IPC_CHANNELS } from '../constants/ipcChannels';
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  loadTodoFile: () => ipcRenderer.invoke('load-todo-file'),
-  saveTodoFile: (content: string) => ipcRenderer.invoke('save-todo-file', content),
-  showNotification: (title: string, body: string) => ipcRenderer.invoke('show-notification', title, body),
-  openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
-  showSaveDialog: () => ipcRenderer.invoke('show-save-dialog'),
+  loadTodoFile: () => ipcRenderer.invoke(IPC_CHANNELS.LOAD_TODO_FILE),
+  saveTodoFile: (content: string) => ipcRenderer.invoke(IPC_CHANNELS.SAVE_TODO_FILE, content),
+  showNotification: (title: string, body: string) => ipcRenderer.invoke(IPC_CHANNELS.SHOW_NOTIFICATION, title, body),
+  openFileDialog: () => ipcRenderer.invoke(IPC_CHANNELS.OPEN_FILE_DIALOG),
+  showSaveDialog: () => ipcRenderer.invoke(IPC_CHANNELS.SHOW_SAVE_DIALOG),
 
   onShowAddTaskDialog: (callback: () => void) =>
-    ipcRenderer.on('show-add-task-dialog', callback),
+    ipcRenderer.on(IPC_CHANNELS.SHOW_ADD_TASK_DIALOG, callback),
 
   removeShowAddTaskDialogListener: (callback: () => void) =>
-    ipcRenderer.removeListener('show-add-task-dialog', callback),
+    ipcRenderer.removeListener(IPC_CHANNELS.SHOW_ADD_TASK_DIALOG, callback),
 
   // Update functionality
-  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
-  downloadUpdate: () => ipcRenderer.invoke('download-update'),
-  installUpdate: () => ipcRenderer.invoke('install-update'),
-  getUpdateInfo: () => ipcRenderer.invoke('get-update-info'),
-  isUpdateAvailable: () => ipcRenderer.invoke('is-update-available'),
+  checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES),
+  downloadUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_UPDATE),
+  installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.INSTALL_UPDATE),
+  getUpdateInfo: () => ipcRenderer.invoke(IPC_CHANNELS.GET_UPDATE_INFO),
+  isUpdateAvailable: () => ipcRenderer.invoke(IPC_CHANNELS.IS_UPDATE_AVAILABLE),
 
   // Listen for menu events
   onFileLoaded: (callback: (content: string, filePath: string) => void) =>
-    ipcRenderer.on('file-loaded', (_event, content, filePath) => callback(content, filePath)),
+    ipcRenderer.on(IPC_CHANNELS.FILE_LOADED, (_event, content, filePath) => callback(content, filePath)),
   removeFileLoadedListener: () =>
-    ipcRenderer.removeAllListeners('file-loaded'),
+    ipcRenderer.removeAllListeners(IPC_CHANNELS.FILE_LOADED),
   onSaveRequest: (callback: () => void) =>
-    ipcRenderer.on('save-request', () => callback()),
+    ipcRenderer.on(IPC_CHANNELS.SAVE_REQUEST, () => callback()),
   removeSaveRequestListener: () =>
-    ipcRenderer.removeAllListeners('save-request'),
+    ipcRenderer.removeAllListeners(IPC_CHANNELS.SAVE_REQUEST),
   onSaveAsRequest: (callback: (filePath: string) => void) =>
-    ipcRenderer.on('save-as-request', (_event, filePath) => callback(filePath)),
+    ipcRenderer.on(IPC_CHANNELS.SAVE_AS_REQUEST, (_event, filePath) => callback(filePath)),
   removeSaveAsRequestListener: () =>
-    ipcRenderer.removeAllListeners('save-as-request'),
+    ipcRenderer.removeAllListeners(IPC_CHANNELS.SAVE_AS_REQUEST),
 
   // Listen for update events
   onUpdateAvailable: (callback: (info: UpdateInfo) => void) =>
-    ipcRenderer.on('update-available', (_event, info) => callback(info)),
+    ipcRenderer.on(IPC_CHANNELS.UPDATE_AVAILABLE, (_event, info) => callback(info)),
   onUpdateDownloaded: (callback: (info: UpdateInfo) => void) =>
-    ipcRenderer.on('update-downloaded', (_event, info) => callback(info)),
+    ipcRenderer.on(IPC_CHANNELS.UPDATE_DOWNLOADED, (_event, info) => callback(info)),
   onUpdateDownloadProgress: (callback: (progress: DownloadProgress) => void) =>
-    ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress)),
+    ipcRenderer.on(IPC_CHANNELS.UPDATE_DOWNLOAD_PROGRESS, (_event, progress) => callback(progress)),
   onUpdateError: (callback: (error: string) => void) =>
-    ipcRenderer.on('update-error', (_event, error) => callback(error)),
+    ipcRenderer.on(IPC_CHANNELS.UPDATE_ERROR, (_event, error) => callback(error)),
 });

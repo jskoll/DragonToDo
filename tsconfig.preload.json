@@ -12,7 +12,8 @@
     "noEmit": false
   },
   "include": [
-    "src/preload/**/*"
+    "src/preload/**/*",
+    "src/constants/**/*"
   ],
   "exclude": [
     "node_modules",
