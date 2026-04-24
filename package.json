@@ -39,6 +39,10 @@
   ],
   "author": "DragonToDo",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "description": "A modern, fully-typed Electron app for managing encrypted todo.txt files with Nord theme",
   "build": {
     "appId": "com.dragontodo.manager",
