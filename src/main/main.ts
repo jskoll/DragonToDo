@@ -1,172 +1,25 @@
-import { app, BrowserWindow, Menu, ipcMain, dialog, Notification, globalShortcut } from 'electron';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import { app, BrowserWindow, globalShortcut } from 'electron';
+import { createWindow, getMainWindow } from './window';
+import { createMenu } from './menu';
+import { registerIpcHandlers } from './ipcHandlers';
 import { IPC_CHANNELS } from '../constants/ipcChannels';
 
 if (process.env.NODE_ENV === 'development') {
   try {
     require('electron-reloader')(module);
-  } catch (_) {}
-}
-
-let mainWindow: BrowserWindow;
-let currentFilePath: string | null = null;
-
-function createWindow(): void {
-  mainWindow = new BrowserWindow({
-    height: 800,
-    width: 1200,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, '../preload/preload.js'),
-    },
-    titleBarStyle: 'hiddenInset',
-    show: false,
-  });
-
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:3000');
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  } catch {
+    // Ignore errors from electron-reloader
   }
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null as any;
-  });
-}
-
-function createMenu(): void {
-  const template = [
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'Open',
-          accelerator: 'CmdOrCtrl+O',
-          click: async () => {
-            const result = await dialog.showOpenDialog(mainWindow, {
-              properties: ['openFile'],
-              filters: [
-                { name: 'DragonToDo files', extensions: ['dtd'] },
-                { name: 'Todo.txt files', extensions: ['txt'] },
-                { name: 'All files', extensions: ['*'] }
-              ]
-            });
-
-            if (!result.canceled && result.filePaths.length > 0) {
-              currentFilePath = result.filePaths[0];
-              const content = await fs.readFile(currentFilePath, 'utf-8');
-              mainWindow.webContents.send(IPC_CHANNELS.FILE_LOADED, content, currentFilePath);
-            }
-          }
-        },
-        {
-          label: 'Save',
-          accelerator: 'CmdOrCtrl+S',
-          click: () => {
-            mainWindow.webContents.send(IPC_CHANNELS.SAVE_REQUEST);
-          }
-        },
-        {
-          label: 'Save As...',
-          accelerator: 'CmdOrCtrl+Shift+S',
-          click: async () => {
-            const result = await dialog.showSaveDialog(mainWindow, {
-              defaultPath: currentFilePath || 'untitled.dtd',
-              filters: [
-                { name: 'DragonToDo files', extensions: ['dtd'] },
-                { name: 'Todo.txt files', extensions: ['txt'] }
-              ]
-            });
-
-            if (!result.canceled && result.filePath) {
-              currentFilePath = result.filePath;
-              mainWindow.webContents.send(IPC_CHANNELS.SAVE_AS_REQUEST, currentFilePath);
-            }
-          }
-        },
-        { type: 'separator' },
-        { role: 'quit' }
-      ]
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        {
-          label: 'Undo',
-          accelerator: 'CmdOrCtrl+Z',
-          role: 'undo'
-        },
-        {
-          label: 'Redo',
-          accelerator: 'CmdOrCtrl+Y',
-          role: 'redo'
-        },
-        { type: 'separator' },
-        {
-          label: 'Cut',
-          accelerator: 'CmdOrCtrl+X',
-          role: 'cut'
-        },
-        {
-          label: 'Copy',
-          accelerator: 'CmdOrCtrl+C',
-          role: 'copy'
-        },
-        {
-          label: 'Paste',
-          accelerator: 'CmdOrCtrl+V',
-          role: 'paste'
-        },
-        {
-          label: 'Select All',
-          accelerator: 'CmdOrCtrl+A',
-          role: 'selectall'
-        },
-        { type: 'separator' },
-        {
-          label: 'Toggle Full Screen',
-          accelerator: 'CmdOrCtrl+Shift+F',
-          click: () => {
-            if (mainWindow) {
-              const isFullScreen = mainWindow.isFullScreen();
-              mainWindow.setFullScreen(!isFullScreen);
-            }
-          }
-        }
-      ]
-    },
-    {
-      label: 'Help',
-      role: 'help',
-      submenu: [
-        {
-          label: 'Learn More',
-          click: async () => {
-            const { shell } = require('electron');
-            await shell.openExternal('https://github.com/jskoll/DragonToDo');
-          }
-        }
-      ]
-    }
-  ];
-
-  const menu = Menu.buildFromTemplate(template as any);
-  Menu.setApplicationMenu(menu);
 }
 
 app.whenReady().then(() => {
   createWindow();
   createMenu();
+  registerIpcHandlers();
 
   // Register a global shortcut
   const ret = globalShortcut.register('CommandOrControl+Shift+D', () => {
+    const mainWindow = getMainWindow();
     if (mainWindow) {
       if (mainWindow.isMinimized()) {
         mainWindow.restore();
@@ -197,60 +50,4 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   // Unregister all shortcuts.
   globalShortcut.unregisterAll();
-});
-
-// IPC handlers
-ipcMain.handle(IPC_CHANNELS.LOAD_TODO_FILE, async (): Promise<string> => {
-  if (currentFilePath) {
-    try {
-      return await fs.readFile(currentFilePath, 'utf-8');
-    } catch (error) {
-      console.error('Error loading file:', error);
-      throw error;
-    }
-  }
-  return '';
-});
-
-ipcMain.handle(IPC_CHANNELS.SAVE_TODO_FILE, async (_event, content: string): Promise<void> => {
-  if (currentFilePath) {
-    try {
-      await fs.writeFile(currentFilePath, content, 'utf-8');
-    } catch (error) {
-      console.error('Error saving file:', error);
-      throw error;
-    }
-  } else {
-    throw new Error('No file path set');
-  }
-});
-
-ipcMain.handle(IPC_CHANNELS.SHOW_NOTIFICATION, (_event, title: string, body: string): void => {
-  if (Notification.isSupported()) {
-    new Notification({ title, body }).show();
-  }
-});
-
-ipcMain.handle(IPC_CHANNELS.OPEN_FILE_DIALOG, async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters: [{ name: 'Todo Files', extensions: ['dtd', 'txt'] }],
-  });
-  if (!canceled && filePaths.length > 0) {
-    currentFilePath = filePaths[0];
-    return currentFilePath;
-  }
-  return null;
-});
-
-ipcMain.handle(IPC_CHANNELS.SHOW_SAVE_DIALOG, async () => {
-  const { canceled, filePath } = await dialog.showSaveDialog({
-    defaultPath: 'untitled.dtd',
-    filters: [{ name: 'Todo Files', extensions: ['dtd', 'txt'] }],
-  });
-  if (!canceled && filePath) {
-    currentFilePath = filePath;
-    return filePath;
-  }
-  return null;
 });
