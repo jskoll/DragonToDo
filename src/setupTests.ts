@@ -9,6 +9,24 @@ const mockElectronAPI = {
   onFileLoaded: jest.fn(),
   onSaveRequest: jest.fn(),
   onSaveAsRequest: jest.fn(),
+
+  // Add missing mocks
+  showSaveDialog: jest.fn(() => Promise.resolve(null)),
+  onShowAddTaskDialog: jest.fn(() => jest.fn()),  // returns cleanup function
+  removeShowAddTaskDialogListener: jest.fn(),
+
+  // Update functionality
+  checkForUpdates: jest.fn(() => Promise.resolve()),
+  downloadUpdate: jest.fn(() => Promise.resolve()),
+  installUpdate: jest.fn(),
+  getUpdateInfo: jest.fn(() => null),
+  isUpdateAvailable: jest.fn(() => false),
+
+  // Update event listeners
+  onUpdateAvailable: jest.fn(),
+  onUpdateDownloaded: jest.fn(),
+  onUpdateDownloadProgress: jest.fn(),
+  onUpdateError: jest.fn(),
 };
 
 Object.defineProperty(window, 'electronAPI', {
