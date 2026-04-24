@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { ThemeProvider as MUIThemeProvider, CssBaseline } from '@mui/material';
 import '../types/electron.d.ts';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  Box, 
-  Container, 
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  Container,
   Grid,
   Paper,
   Chip,
@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogContent
 } from '@mui/material';
-import { 
+import {
   Save as SaveIcon,
   FolderOpen as OpenIcon,
   Lock as LockIcon,
@@ -67,23 +67,23 @@ const App: React.FC = () => {
 
   // Local state for filtered todos
   const [filteredTodos, setFilteredTodos] = useState<TodoItem[]>([]);
-  
+
   // File handling state
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
   const [isModified, setIsModified] = useState(false);
   const [pendingFile, setPendingFile] = useState<{ filePath: string; content: string } | null>(null);
-  
+
   // Encryption state
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [password, setPassword] = useState<string>('');
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordMode, setPasswordMode] = useState<'encrypt' | 'decrypt'>('encrypt');
-  
+
   // UI state
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
-  
+
   // Services
   const [reminderService] = useState(() => new ReminderService());
 
@@ -142,30 +142,30 @@ const App: React.FC = () => {
    */
   const saveFile = useCallback(async () => {
     if (!currentFilePath) return;
-    
+
     try {
       let content = TodoParser.serializeFile(todos);
-      
+
       // Encrypt if password is set
       if (isEncrypted && password) {
         content = ENCRYPTION_HEADER + encryptData(content, password);
       }
-      
-      // Update file extension to .dtd if not already
+
+      // Update file extension to .dtd only if encrypted
       let saveFilePath = currentFilePath;
-      if (!saveFilePath.endsWith('.dtd')) {
+      if (isEncrypted && !saveFilePath.endsWith('.dtd')) {
         saveFilePath = saveFilePath.replace(/\.[^.]+$/, '.dtd');
         setCurrentFilePath(saveFilePath);
       }
-      
+
       await window.electronAPI.saveTodoFile(content);
       setIsModified(false);
       setNotification({ message: `Saved ${todos.length} todos to ${saveFilePath.split('/').pop()}`, type: 'success' });
     } catch (error) {
       console.error('Error saving file:', error);
-      setNotification({ 
-        message: error instanceof Error ? error.message : 'Failed to save file', 
-        type: 'error' 
+      setNotification({
+        message: error instanceof Error ? error.message : 'Failed to save file',
+        type: 'error'
       });
     }
   }, [todos, currentFilePath, isEncrypted, password]);
@@ -184,18 +184,18 @@ const App: React.FC = () => {
       filtered = filtered.filter(todo => todo.priority === filter.priority);
     }
     if (filter.projects && filter.projects.length > 0) {
-      filtered = filtered.filter(todo => 
+      filtered = filtered.filter(todo =>
         filter.projects!.some(project => todo.projects.includes(project))
       );
     }
     if (filter.contexts && filter.contexts.length > 0) {
-      filtered = filtered.filter(todo => 
+      filtered = filtered.filter(todo =>
         filter.contexts!.some(context => todo.contexts.includes(context))
       );
     }
     if (filter.searchText) {
       const searchLower = filter.searchText.toLowerCase();
-      filtered = filtered.filter(todo => 
+      filtered = filtered.filter(todo =>
         todo.text.toLowerCase().includes(searchLower) ||
         todo.projects.some(p => p.toLowerCase().includes(searchLower)) ||
         todo.contexts.some(c => c.toLowerCase().includes(searchLower))
@@ -205,7 +205,7 @@ const App: React.FC = () => {
     // Apply sorting
     filtered.sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortField) {
         case 'priority':
           const aPriority = a.priority || 'ZZ';
@@ -275,15 +275,15 @@ const App: React.FC = () => {
       rawText: newTodo.text,
       keyValuePairs: {},
     };
-    
+
     dispatch(addTodoAction(todo));
     setIsModified(true);
-    
+
     // Set up reminder if enabled
     if (todo.reminder?.enabled) {
       reminderService.setupReminders([todo]);
     }
-    
+
     setNotification({ message: 'Todo added successfully', type: 'success' });
   }, [dispatch, reminderService]);
 
@@ -308,17 +308,17 @@ const App: React.FC = () => {
         setIsModified(false);
         setIsEncrypted(false);
         setPassword('');
-        
+
         // Save the empty file immediately
         await window.electronAPI.saveTodoFile('');
-        
+
         setNotification({ message: `New file created at ${filePath.split('/').pop()}`, type: 'success' });
       }
     } catch (error) {
       console.error('Error creating new file:', error);
-      setNotification({ 
-        message: error instanceof Error ? error.message : 'Failed to create new file', 
-        type: 'error' 
+      setNotification({
+        message: error instanceof Error ? error.message : 'Failed to create new file',
+        type: 'error'
       });
     }
   };
@@ -459,16 +459,16 @@ const App: React.FC = () => {
               <MenuIcon />
             </IconButton>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
-              <img 
-                src="/logo.png" 
-                alt="DragonToDo" 
+              <img
+                src="/logo.png"
+                alt="DragonToDo"
                 style={{ height: '32px', width: '32px', objectFit: 'contain' }}
               />
               <Typography variant="h6" component="h1">
                 DragonToDo
               </Typography>
             </Box>
-            
+
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <IconButton color="inherit" onClick={() => setShowAddTaskDialog(true)} title="Add New Task">
                 <AddTaskIcon />
@@ -479,7 +479,7 @@ const App: React.FC = () => {
               <IconButton color="inherit" onClick={openFile} title="Open File">
                 <OpenIcon />
               </IconButton>
-              
+
               <Button
                 color="inherit"
                 startIcon={<SaveIcon />}
@@ -490,7 +490,7 @@ const App: React.FC = () => {
               >
                 Save {isModified && '*'}
               </Button>
-              
+
               <Button
                 color="inherit"
                 startIcon={isEncrypted ? <LockIcon /> : <LockOpenIcon />}
@@ -500,7 +500,7 @@ const App: React.FC = () => {
               >
                 {isEncrypted ? 'Encrypted' : 'Encrypt'}
               </Button>
-              
+
               <Chip
                 label={getFileDisplayName()}
                 variant="outlined"
@@ -525,7 +525,7 @@ const App: React.FC = () => {
                   todos={todos}
                 />
               </Paper>
-              
+
               <Paper sx={{ p: 2 }}>
                 <TodoList_MUI
                   todos={filteredTodos}
