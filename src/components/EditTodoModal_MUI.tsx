@@ -20,11 +20,8 @@ import {
 } from '@mui/icons-material';
 
 import { TodoItem, Priority } from '../types/todo';
-import { 
-  validateAndAdjustReminderDateTime, 
-  formatDateTimeLocal, 
-  getRelativeTimeString 
-} from '../utils/timeUtils';
+import { useReminderValidation } from '../hooks/useReminderValidation';
+import { validateAndAdjustReminderDateTime, formatDateTimeLocal } from '../utils/timeUtils';
 
 interface EditTodoModalProps {
   todo: TodoItem;
@@ -38,15 +35,18 @@ const EditTodoModal_MUI: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose
   const [priority, setPriority] = useState<Priority | ''>(todo.priority || '');
   const [projects, setProjects] = useState(todo.projects.join(' '));
   const [contexts, setContexts] = useState(todo.contexts.join(' '));
-  const [reminderEnabled, setReminderEnabled] = useState(todo.reminder?.enabled || false);
-  const [reminderDateTime, setReminderDateTime] = useState(
-    todo.reminder?.dateTime ? formatDateTimeLocal(todo.reminder.dateTime) : ''
-  );
-  const [reminderValidation, setReminderValidation] = useState<{
-    isValid: boolean;
-    errorMessage?: string;
-    relativeTime?: string;
-  }>({ isValid: true });
+
+  const {
+    reminderEnabled,
+    reminderDateTime,
+    reminderValidation,
+    setReminderDateTime,
+    handleReminderToggle,
+    reset: resetReminder,
+  } = useReminderValidation({
+    initialEnabled: todo.reminder?.enabled || false,
+    initialDateTime: todo.reminder?.dateTime ? formatDateTimeLocal(todo.reminder.dateTime) : '',
+  });
 
   // Reset form when todo changes
   useEffect(() => {
@@ -55,35 +55,16 @@ const EditTodoModal_MUI: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose
       setPriority(todo.priority || '');
       setProjects(todo.projects.join(' '));
       setContexts(todo.contexts.join(' '));
-      setReminderEnabled(todo.reminder?.enabled || false);
-      setReminderDateTime(
-        todo.reminder?.dateTime ? formatDateTimeLocal(todo.reminder.dateTime) : ''
-      );
+      // Reset reminder with new values
+      resetReminder();
+      if (todo.reminder?.enabled) {
+        handleReminderToggle(true);
+        if (todo.reminder?.dateTime) {
+          setReminderDateTime(formatDateTimeLocal(todo.reminder.dateTime));
+        }
+      }
     }
-  }, [todo, isOpen]);
-
-  // Validate reminder when it changes
-  useEffect(() => {
-    if (reminderEnabled && reminderDateTime) {
-      const result = validateAndAdjustReminderDateTime(reminderDateTime);
-      setReminderValidation({
-        isValid: result.isValid,
-        errorMessage: result.errorMessage,
-        relativeTime: result.isValid ? getRelativeTimeString(new Date(reminderDateTime)) : undefined
-      });
-    } else {
-      setReminderValidation({ isValid: true });
-    }
-  }, [reminderEnabled, reminderDateTime]);
-
-  const handleReminderToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const enabled = event.target.checked;
-    setReminderEnabled(enabled);
-    if (enabled && !reminderDateTime) {
-      const result = validateAndAdjustReminderDateTime(new Date());
-      setReminderDateTime(formatDateTimeLocal(result.adjustedDateTime));
-    }
-  };
+  }, [todo, isOpen, resetReminder, handleReminderToggle, setReminderDateTime]);
 
   const handleSave = () => {
     if (!text.trim()) return;
@@ -114,11 +95,17 @@ const EditTodoModal_MUI: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose
 
     const updates: Partial<TodoItem> = {
       text: text.trim(),
-      priority: priority || undefined,
       projects: projectsArray,
       contexts: contextsArray,
-      reminder
     };
+
+    if (priority) {
+      updates.priority = priority;
+    }
+
+    if (reminder) {
+      updates.reminder = reminder;
+    }
 
     onSave(todo.id, updates);
     onClose();

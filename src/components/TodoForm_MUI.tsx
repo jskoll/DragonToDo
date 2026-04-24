@@ -19,11 +19,8 @@ import {
 } from '@mui/icons-material';
 
 import { TodoItem, Priority } from '../types/todo';
-import { 
-  validateAndAdjustReminderDateTime, 
-  formatDateTimeLocal, 
-  getRelativeTimeString 
-} from '../utils/timeUtils';
+import { useReminderValidation } from '../hooks/useReminderValidation';
+import { validateAndAdjustReminderDateTime } from '../utils/timeUtils';
 
 interface TodoFormProps {
   onSubmit: (todo: Omit<TodoItem, 'id' | 'completed' | 'creationDate' | 'rawText' | 'keyValuePairs'>) => void;
@@ -34,14 +31,16 @@ const TodoForm_MUI: React.FC<TodoFormProps> = ({ onSubmit }) => {
   const [priority, setPriority] = useState<Priority | ''>('');
   const [projects, setProjects] = useState('');
   const [contexts, setContexts] = useState('');
-  const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [reminderDateTime, setReminderDateTime] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [reminderValidation, setReminderValidation] = useState<{
-    isValid: boolean;
-    errorMessage?: string;
-    relativeTime?: string;
-  }>({ isValid: true });
+
+  const {
+    reminderEnabled,
+    reminderDateTime,
+    reminderValidation,
+    setReminderDateTime,
+    handleReminderToggle,
+    reset: resetReminder,
+  } = useReminderValidation();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,33 +90,10 @@ const TodoForm_MUI: React.FC<TodoFormProps> = ({ onSubmit }) => {
     setPriority('');
     setProjects('');
     setContexts('');
-    setReminderEnabled(false);
-    setReminderDateTime('');
+    resetReminder();
     setShowAdvanced(false);
-    setReminderValidation({ isValid: true });
   };
 
-  const handleReminderToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const enabled = event.target.checked;
-    setReminderEnabled(enabled);
-    if (enabled && !reminderDateTime) {
-      const result = validateAndAdjustReminderDateTime(new Date());
-      setReminderDateTime(formatDateTimeLocal(result.adjustedDateTime));
-    }
-  };
-
-  React.useEffect(() => {
-    if (reminderEnabled && reminderDateTime) {
-      const result = validateAndAdjustReminderDateTime(reminderDateTime);
-      setReminderValidation({
-        isValid: result.isValid,
-        errorMessage: result.errorMessage,
-        relativeTime: result.isValid ? getRelativeTimeString(new Date(reminderDateTime)) : undefined
-      });
-    } else {
-      setReminderValidation({ isValid: true });
-    }
-  }, [reminderEnabled, reminderDateTime]);
 
   const canSubmit = text.trim() && (!reminderEnabled || !reminderDateTime || reminderValidation.isValid);
 
