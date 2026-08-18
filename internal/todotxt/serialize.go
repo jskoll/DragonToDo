@@ -2,6 +2,7 @@ package todotxt
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"strings"
 )
@@ -49,6 +50,13 @@ func (t *Task) String() string {
 
 	// Description (as-is, already contains +proj/@ctx/key:val tokens)
 	buf.WriteString(strings.TrimSpace(t.Description))
+	if t.Details != "" {
+		if buf.Len() > 0 {
+			buf.WriteString(" ")
+		}
+		buf.WriteString("details:")
+		buf.WriteString(base64.RawURLEncoding.EncodeToString([]byte(t.Details)))
+	}
 
 	return buf.String()
 }

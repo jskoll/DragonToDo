@@ -178,6 +178,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKey(msg)
+	case tea.MouseMsg:
+		return m.handleMouse(msg)
+	case urlOpenMsg:
+		if msg.err != nil {
+			m.fail("could not open link: " + msg.err.Error())
+		} else {
+			m.notify("Opened " + msg.url)
+		}
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height

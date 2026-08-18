@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -75,8 +76,8 @@ func TestFormValuesRoundTrip(t *testing.T) {
 	task := m.rows[0].task // (A) Ship dragon-todo v1 +dragon @work due:2026-08-19
 	values := formValues(task)
 
-	if values[fieldDescription] != "Ship dragon-todo v1" {
-		t.Errorf("description field = %q, want the prose only", values[fieldDescription])
+	if values[fieldTitle] != "Ship dragon-todo v1" {
+		t.Errorf("task field = %q, want the prose only", values[fieldTitle])
 	}
 	if values[fieldProjects] != "dragon" {
 		t.Errorf("projects field = %q, want dragon", values[fieldProjects])
@@ -91,7 +92,7 @@ func TestFormValuesRoundTrip(t *testing.T) {
 	// Saving the form unchanged must not alter the task.
 	before := task.String()
 	press(t, m, "e")
-	press(t, m, "ctrl+s")
+	press(t, m, "ctrl+g")
 	if after := task.String(); after != before {
 		t.Errorf("an untouched edit changed the task:\n before %q\n after  %q", before, after)
 	}
@@ -109,7 +110,7 @@ func TestEditPreservesPriorityAndCompletion(t *testing.T) {
 	}
 
 	press(t, m, "e")
-	fillForm(t, m, map[int]string{fieldDescription: "Rewrite the TUI properly"})
+	fillForm(t, m, map[int]string{fieldTitle: "Rewrite the TUI properly"})
 
 	if !task.Done {
 		t.Error("editing reopened a completed task")
@@ -127,9 +128,9 @@ func TestFormRejectsBadDateAndEmptyDescription(t *testing.T) {
 	before := len(m.rows)
 
 	press(t, m, "a")
-	m.form.inputs[fieldDescription].SetValue("Water plants")
+	m.form.inputs[fieldTitle].SetValue("Water plants")
 	m.form.inputs[fieldDue].SetValue("whenever")
-	press(t, m, "ctrl+s")
+	press(t, m, "ctrl+g")
 
 	if m.mode != ModeForm {
 		t.Fatal("a bad date should keep the form open")
@@ -146,14 +147,14 @@ func TestFormRejectsBadDateAndEmptyDescription(t *testing.T) {
 
 	// Fixing the date lets it through.
 	m.form.inputs[fieldDue].SetValue("+3d")
-	press(t, m, "ctrl+s")
+	press(t, m, "ctrl+g")
 	if m.mode != ModeNormal || len(m.rows) != before+1 {
 		t.Fatalf("valid form did not save: mode=%v rows=%d", m.mode, len(m.rows))
 	}
 
 	// An empty description is refused too.
 	press(t, m, "a")
-	press(t, m, "ctrl+s")
+	press(t, m, "ctrl+g")
 	if m.mode != ModeForm || m.form.err == "" {
 		t.Error("an empty form should be refused with an error")
 	}
@@ -164,9 +165,9 @@ func TestFormNavigationWrapsAndEnterSavesOnLastField(t *testing.T) {
 	before := len(m.rows)
 
 	press(t, m, "a")
-	m.form.inputs[fieldDescription].SetValue("Book the venue")
+	m.form.inputs[fieldTitle].SetValue("Book the venue")
 
-	press(t, m, "enter") // description -> projects
+	press(t, m, "enter") // task -> projects
 	if m.form.focus != fieldProjects {
 		t.Fatalf("enter left focus at %d, want projects", m.form.focus)
 	}
@@ -174,12 +175,12 @@ func TestFormNavigationWrapsAndEnterSavesOnLastField(t *testing.T) {
 	if m.form.focus != fieldDue {
 		t.Fatalf("tab left focus at %d, want due", m.form.focus)
 	}
-	press(t, m, "tab") // wraps back to the description
+	press(t, m, "tab") // moves to the description
 	if m.form.focus != fieldDescription {
-		t.Fatalf("tab did not wrap: focus %d", m.form.focus)
+		t.Fatalf("tab did not reach description: focus %d", m.form.focus)
 	}
 
-	press(t, m, "tab", "tab", "tab", "enter") // enter on the last field saves
+	press(t, m, "enter", "ctrl+g") // enter adds a line; ctrl+g saves
 	if m.mode != ModeNormal {
 		t.Fatal("enter on the last field did not save")
 	}
@@ -188,15 +189,63 @@ func TestFormNavigationWrapsAndEnterSavesOnLastField(t *testing.T) {
 	}
 }
 
+func TestFormDetailsRoundTripAndRendersLinks(t *testing.T) {
+	m := newTestModel(t, 120, 40)
+	details := "Review the docs at https://example.com/guide."
+
+	press(t, m, "a")
+	fillForm(t, m, map[int]string{
+		fieldTitle:       "Read the guide",
+		fieldDescription: details,
+	})
+
+	task := m.selectedTask()
+	if task.Details != details {
+		t.Fatalf("details = %q, want %q", task.Details, details)
+	}
+
+	data, err := os.ReadFile(m.TodoPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "details:") {
+		t.Fatalf("details were not persisted to todo.txt:\n%s", data)
+	}
+
+	press(t, m, "r")
+	task = m.selectedTask()
+	if task.Details != details {
+		t.Fatalf("details after reload = %q, want %q", task.Details, details)
+	}
+	if task.Description != "Read the guide" {
+		t.Fatalf("task title after reload = %q, want details token removed", task.Description)
+	}
+	if !strings.Contains(stripView(m), "https://example.com/guide") {
+		t.Error("details URL is missing from the details panel")
+	}
+}
+
+func TestDescriptionAcceptsNewlines(t *testing.T) {
+	m := newTestModel(t, 120, 40)
+
+	press(t, m, "a")
+	m.form.inputs[fieldTitle].SetValue("Plan the launch")
+	press(t, m, "tab", "tab", "tab", "tab", "first", "enter", "second", "ctrl+g")
+
+	if got := m.selectedTask().Details; got != "first\nsecond" {
+		t.Errorf("description = %q, want multi-line text", got)
+	}
+}
+
 func TestFormAddsTagsAndDueToFile(t *testing.T) {
 	m := newTestModel(t, 120, 40)
 
 	press(t, m, "a")
 	fillForm(t, m, map[int]string{
-		fieldDescription: "Renew the domain",
-		fieldProjects:    "admin, infra",
-		fieldContexts:    "@home",
-		fieldDue:         "2026-09-01",
+		fieldTitle:    "Renew the domain",
+		fieldProjects: "admin, infra",
+		fieldContexts: "@home",
+		fieldDue:      "2026-09-01",
 	})
 
 	task := m.selectedTask()

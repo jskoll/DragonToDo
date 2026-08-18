@@ -8,16 +8,17 @@ import (
 // Description is kept as the literal source text, with tags like +project, @context,
 // and key:value pairs parsed as views into it (not reconstructed), ensuring round-trip fidelity.
 type Task struct {
-	Raw        string
-	Done       bool
-	Priority   rune            // 'A'-'Z', 0 if none
+	Raw         string
+	Done        bool
+	Priority    rune // 'A'-'Z', 0 if none
 	CompletedOn *time.Time
-	CreatedOn  *time.Time
+	CreatedOn   *time.Time
 	Description string
-	Projects   []string
-	Contexts   []string
-	Extensions map[string]string
-	Due        *time.Time // derived from Extensions["due"]
+	Details     string
+	Projects    []string
+	Contexts    []string
+	Extensions  map[string]string
+	Due         *time.Time // derived from Extensions["due"]
 
 	Indent   int
 	Children []*Task

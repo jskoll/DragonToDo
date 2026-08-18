@@ -10,7 +10,7 @@ A terminal UI (TUI) for managing todo.txt files in Go, built with [bubbletea](ht
 - **OS Notifications**: Background daemon (launchd on macOS) sends notifications for overdue/due-today tasks
 - **Configurable storage**: Todo file can live anywhere; path resolved via CLI flag, env var, config file, or default
 - **Interactive TUI**: A lazygit-style panel layout — task tree, projects, contexts and a
-  details pane — with folding, filtering, sorting and reordering from the keyboard
+  details pane — with task notes, clickable web links, folding, filtering, sorting and reordering from the keyboard
 
 ## Quick Start
 
@@ -99,7 +99,7 @@ Press `?` in the TUI for the same list.
 | `j`/`k`, `g`/`G`, `ctrl+d`/`ctrl+u` | Move, jump to top/bottom, half-page |
 | `a` | Add a top-level task |
 | `A` | Add a subtask under the selection |
-| `e` / `enter` | Edit the selected task as a todo.txt line |
+| `e` / `enter` | Edit the selected task, including details and links |
 | `d` | Delete the selected task and its subtasks (asks first) |
 | `space` / `x` | Toggle completion |
 | `p` | Cycle priority (A → B → C → none) |

@@ -66,8 +66,8 @@ func press(t *testing.T, m *Model, keys ...string) {
 			msg = tea.KeyMsg{Type: tea.KeyTab}
 		case "space":
 			msg = tea.KeyMsg{Type: tea.KeySpace}
-		case "ctrl+s":
-			msg = tea.KeyMsg{Type: tea.KeyCtrlS}
+		case "ctrl+g":
+			msg = tea.KeyMsg{Type: tea.KeyCtrlG}
 		default:
 			msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
 		}
@@ -84,9 +84,13 @@ func fillForm(t *testing.T, m *Model, fields map[int]string) {
 		t.Fatal("no form is open")
 	}
 	for field, value := range fields {
-		m.form.inputs[field].SetValue(value)
+		if field == fieldDescription {
+			m.form.description.SetValue(value)
+		} else {
+			m.form.inputs[field].SetValue(value)
+		}
 	}
-	press(t, m, "ctrl+s")
+	press(t, m, "ctrl+g")
 }
 
 func stripView(m *Model) string {
@@ -191,7 +195,7 @@ func TestAddEditDeleteRoundTrip(t *testing.T) {
 	before := len(m.rows)
 
 	press(t, m, "a")
-	fillForm(t, m, map[int]string{fieldDescription: "Water plants"})
+	fillForm(t, m, map[int]string{fieldTitle: "Water plants"})
 	if len(m.rows) != before+1 {
 		t.Fatalf("add did not create a row: %d -> %d", before, len(m.rows))
 	}
@@ -201,9 +205,9 @@ func TestAddEditDeleteRoundTrip(t *testing.T) {
 
 	press(t, m, "e")
 	fillForm(t, m, map[int]string{
-		fieldDescription: "Water plants",
-		fieldContexts:    "home",
-		fieldDue:         "tomorrow",
+		fieldTitle:    "Water plants",
+		fieldContexts: "home",
+		fieldDue:      "tomorrow",
 	})
 	task := m.selectedTask()
 	if len(task.Contexts) != 1 || task.Contexts[0] != "home" {
@@ -245,7 +249,7 @@ func TestAddSubtaskNestsUnderSelection(t *testing.T) {
 	m := newTestModel(t, 120, 40)
 
 	press(t, m, "A")
-	fillForm(t, m, map[int]string{fieldDescription: "Tag the release"})
+	fillForm(t, m, map[int]string{fieldTitle: "Tag the release"})
 
 	task := m.selectedTask()
 	if task.Indent != 1 {
@@ -362,7 +366,7 @@ func TestEditDoesNotStampCreationDate(t *testing.T) {
 	m := newTestModel(t, 120, 40)
 
 	press(t, m, "e")
-	fillForm(t, m, map[int]string{fieldDescription: "Ship dragon-todo v2", fieldProjects: "dragon"})
+	fillForm(t, m, map[int]string{fieldTitle: "Ship dragon-todo v2", fieldProjects: "dragon"})
 
 	if got := m.selectedTask(); got.CreatedOn != nil {
 		t.Errorf("edit invented a creation date: %v", got.CreatedOn)
@@ -370,7 +374,7 @@ func TestEditDoesNotStampCreationDate(t *testing.T) {
 
 	// A newly added task, on the other hand, should be dated today.
 	press(t, m, "a")
-	fillForm(t, m, map[int]string{fieldDescription: "Something new"})
+	fillForm(t, m, map[int]string{fieldTitle: "Something new"})
 	if m.selectedTask().CreatedOn == nil {
 		t.Error("new task has no creation date")
 	}

@@ -74,11 +74,16 @@ func (m *Model) reload() {
 
 // addTask appends a new root task parsed from the given todo.txt text.
 func (m *Model) addTask(text string) {
+	m.addTaskWithDetails(text, "")
+}
+
+func (m *Model) addTaskWithDetails(text, details string) {
 	task := parseNew(text, 0)
 	if task == nil {
 		m.fail("Nothing to add")
 		return
 	}
+	task.Details = strings.TrimSpace(details)
 	m.Doc.Lines = append(m.Doc.Lines, todotxt.Line{Kind: todotxt.LineTask, Task: task})
 	m.save(true)
 	m.selectTask(task)
@@ -87,8 +92,12 @@ func (m *Model) addTask(text string) {
 
 // addChild appends a new subtask under parent.
 func (m *Model) addChild(parent *todotxt.Task, text string) {
+	m.addChildWithDetails(parent, text, "")
+}
+
+func (m *Model) addChildWithDetails(parent *todotxt.Task, text, details string) {
 	if parent == nil {
-		m.addTask(text)
+		m.addTaskWithDetails(text, details)
 		return
 	}
 	task := parseNew(text, parent.Indent+1)
@@ -96,6 +105,7 @@ func (m *Model) addChild(parent *todotxt.Task, text string) {
 		m.fail("Nothing to add")
 		return
 	}
+	task.Details = strings.TrimSpace(details)
 	parent.Children = append(parent.Children, task)
 	delete(m.collapsed, parent)
 	m.save(true)
@@ -152,7 +162,7 @@ func parseNew(text string, indent int) *todotxt.Task {
 // editing a task must never silently reopen or unprioritize it. A priority or
 // completion marker typed into the description field is still honored, since
 // that is an explicit request.
-func (m *Model) updateTaskFields(task *todotxt.Task, description string) {
+func (m *Model) updateTaskFields(task *todotxt.Task, description, details string) {
 	if task == nil {
 		return
 	}
@@ -164,6 +174,7 @@ func (m *Model) updateTaskFields(task *todotxt.Task, description string) {
 
 	task.Raw = parsed.Raw
 	task.Description = parsed.Description
+	task.Details = strings.TrimSpace(details)
 	task.Projects = parsed.Projects
 	task.Contexts = parsed.Contexts
 	task.Extensions = parsed.Extensions

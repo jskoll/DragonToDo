@@ -27,7 +27,7 @@ func TestCancelledSearchRestoresPreviousFilter(t *testing.T) {
 
 	// A task added after the cancelled search must be visible.
 	press(t, m, "a")
-	fillForm(t, m, map[int]string{fieldDescription: "Feed the dragon"})
+	fillForm(t, m, map[int]string{fieldTitle: "Feed the dragon"})
 
 	if m.selectedTask() == nil || m.selectedTask().Description != "Feed the dragon" {
 		t.Fatal("the added task is not selected")
@@ -47,7 +47,7 @@ func TestAddHiddenByFilterIsReported(t *testing.T) {
 	press(t, m, "enter")
 
 	press(t, m, "a")
-	fillForm(t, m, map[int]string{fieldDescription: "Feed the dragon"})
+	fillForm(t, m, map[int]string{fieldTitle: "Feed the dragon"})
 
 	if !m.isError || !strings.Contains(m.message, "hidden by the current filters") {
 		t.Errorf("no warning for a filtered-out new task: %q", m.message)

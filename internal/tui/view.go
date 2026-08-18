@@ -417,9 +417,14 @@ func (m *Model) formPopup() string {
 	for i := range f.inputs {
 		f.inputs[i].Width = fieldWidth - 1
 	}
+	f.description.SetWidth(fieldWidth - 1)
+	f.description.SetHeight(4)
 
 	lines := []string{strings.Repeat(" ", inner)}
 	for i, in := range f.inputs {
+		if i == fieldDescription {
+			continue
+		}
 		labelStyle, markStyle := s.Dim, s.Dim
 		if i == f.focus {
 			labelStyle, markStyle = s.Label, s.Accent
@@ -432,6 +437,30 @@ func (m *Model) formPopup() string {
 			{mark, markStyle},
 			{fit(fieldLabels[i], labelWidth), labelStyle},
 			{in.View(), s.Text},
+		}, inner, nil))
+	}
+	labelStyle, markStyle := s.Dim, s.Dim
+	if fieldDescription == f.focus {
+		labelStyle, markStyle = s.Label, s.Accent
+	}
+	mark := "  "
+	if fieldDescription == f.focus {
+		mark = "▸ "
+	}
+	descriptionLines := strings.Split(f.description.View(), "\n")
+	for i, line := range descriptionLines {
+		if i == 0 {
+			lines = append(lines, renderSegs([]seg{
+				{mark, markStyle},
+				{fit(fieldLabels[fieldDescription], labelWidth), labelStyle},
+				{line, s.Text},
+			}, inner, nil))
+			continue
+		}
+		lines = append(lines, renderSegs([]seg{
+			{"  ", s.Text},
+			{strings.Repeat(" ", labelWidth), s.Text},
+			{line, s.Text},
 		}, inner, nil))
 	}
 
@@ -449,7 +478,7 @@ func (m *Model) formPopup() string {
 		{"  ", s.Text},
 		{"enter", s.Key}, {": next field   ", s.Dim},
 		{"tab", s.Key}, {": move   ", s.Dim},
-		{"ctrl+s", s.Key}, {": save   ", s.Dim},
+		{"ctrl+g", s.Key}, {": save   ", s.Dim},
 		{"esc", s.Key}, {": cancel", s.Dim},
 	}, inner, nil))
 

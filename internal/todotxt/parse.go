@@ -1,6 +1,7 @@
 package todotxt
 
 import (
+	"encoding/base64"
 	"regexp"
 	"strings"
 	"time"
@@ -94,7 +95,15 @@ func ParseLine(line string) *Task {
 
 func extractTags(task *Task) {
 	words := strings.Fields(task.Description)
+	kept := make([]string, 0, len(words))
 	for _, word := range words {
+		if encoded, ok := strings.CutPrefix(word, "details:"); ok {
+			if details, err := base64.RawURLEncoding.DecodeString(encoded); err == nil {
+				task.Details = string(details)
+				continue
+			}
+		}
+		kept = append(kept, word)
 		if strings.HasPrefix(word, "+") && len(word) > 1 {
 			proj := strings.TrimPrefix(word, "+")
 			task.Projects = append(task.Projects, proj)
@@ -114,4 +123,5 @@ func extractTags(task *Task) {
 			}
 		}
 	}
+	task.Description = strings.Join(kept, " ")
 }

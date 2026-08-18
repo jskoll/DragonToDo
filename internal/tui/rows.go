@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -252,6 +253,13 @@ func (m *Model) detailLinesFor(t *todotxt.Task, width int) []string {
 	if len(t.Contexts) > 0 {
 		field("Contexts", "@"+strings.Join(t.Contexts, "  @"), s.Context)
 	}
+	if t.Details != "" {
+		blank()
+		add(seg{"  " + fit("Details", 12), s.Label})
+		for _, line := range wrapLines(t.Details, max(10, width-4)) {
+			add(append([]seg{{"    ", s.Text}}, linkedSegments(line, s)...)...)
+		}
+	}
 
 	var extras []string
 	for k, v := range t.Extensions {
@@ -305,4 +313,33 @@ func wrapLines(s string, width int) []string {
 		return []string{""}
 	}
 	return strings.Split(ansi.Wrap(s, width, " "), "\n")
+}
+
+var webLink = regexp.MustCompile(`https?://[^\s]+`)
+
+// linkedSegments highlights HTTP(S) URLs while keeping their plain-text form
+// intact for terminal emulators' native URL detection.
+func linkedSegments(text string, s Styles) []seg {
+	matches := webLink.FindAllStringIndex(text, -1)
+	if len(matches) == 0 {
+		return []seg{{text, s.Text}}
+	}
+
+	var out []seg
+	start := 0
+	for _, match := range matches {
+		if match[0] > start {
+			out = append(out, seg{text[start:match[0]], s.Text})
+		}
+		url := strings.TrimRight(text[match[0]:match[1]], ".,;:!?)]}")
+		if url == "" {
+			continue
+		}
+		out = append(out, seg{url, s.Accent.Underline(true)})
+		start = match[0] + len(url)
+	}
+	if start < len(text) {
+		out = append(out, seg{text[start:], s.Text})
+	}
+	return out
 }

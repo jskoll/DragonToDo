@@ -2,13 +2,20 @@ package tui
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 
 	"dragon-todo/internal/todotxt"
 )
+
+type urlOpenMsg struct {
+	url string
+	err error
+}
 
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// ctrl+c always quits, whatever is on screen.
@@ -232,6 +239,32 @@ func (m *Model) handleDetailsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if msg.Button != tea.MouseButtonLeft || msg.Action != tea.MouseActionPress {
+		return m, nil
+	}
+
+	l := m.layout()
+	if !l.showDetails || msg.X < l.leftWidth {
+		return m, nil
+	}
+
+	// The details box has a one-row border above its content.
+	contentIndex := m.detailOffset + msg.Y - 1
+	content := m.detailLinesFor(m.selectedTask(), l.rightWidth-2)
+	if contentIndex < 0 || contentIndex >= len(content) {
+		return m, nil
+	}
+
+	url := strings.TrimRight(webLink.FindString(ansi.Strip(content[contentIndex])), ".,;:!?)]}")
+	if url == "" {
+		return m, nil
+	}
+	return m, func() tea.Msg {
+		return urlOpenMsg{url: url, err: exec.Command("open", url).Run()}
+	}
+}
+
 func (m *Model) moveCursor(cursor *int, delta, count int) {
 	if count == 0 {
 		*cursor = 0
@@ -305,29 +338,42 @@ func (m *Model) handleFormKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.closeForm()
 		return m, nil
 
-	case tea.KeyTab, tea.KeyDown, tea.KeyCtrlN:
+	case tea.KeyTab:
 		f.setFocus(f.focus + 1)
 		return m, nil
 
-	case tea.KeyShiftTab, tea.KeyUp, tea.KeyCtrlP:
-		f.setFocus(f.focus - 1)
-		return m, nil
-
-	case tea.KeyCtrlS:
-		return m, m.submitForm()
-
-	case tea.KeyEnter:
-		// Enter walks the fields and saves from the last one, so the form can
-		// be filled in and committed without leaving the home row.
-		if f.focus < fieldCount-1 {
+	case tea.KeyDown, tea.KeyCtrlN:
+		if f.focus != fieldDescription {
 			f.setFocus(f.focus + 1)
 			return m, nil
 		}
+
+	case tea.KeyShiftTab:
+		f.setFocus(f.focus - 1)
+		return m, nil
+
+	case tea.KeyUp, tea.KeyCtrlP:
+		if f.focus != fieldDescription {
+			f.setFocus(f.focus - 1)
+			return m, nil
+		}
+
+	case tea.KeyCtrlG:
 		return m, m.submitForm()
+
+	case tea.KeyEnter:
+		if f.focus != fieldDescription {
+			f.setFocus(f.focus + 1)
+			return m, nil
+		}
 	}
 
 	var cmd tea.Cmd
-	f.inputs[f.focus], cmd = f.inputs[f.focus].Update(msg)
+	if f.focus == fieldDescription {
+		f.description, cmd = f.description.Update(msg)
+	} else {
+		f.inputs[f.focus], cmd = f.inputs[f.focus].Update(msg)
+	}
 	f.err = ""
 	return m, cmd
 }
@@ -346,14 +392,14 @@ func (m *Model) submitForm() tea.Cmd {
 	}
 
 	description := composeDescription(
-		values[fieldDescription],
+		values[fieldTitle],
 		splitTags(values[fieldProjects], "+"),
 		splitTags(values[fieldContexts], "@"),
 		due,
 	)
 	if strings.TrimSpace(description) == "" {
-		f.err = "A task needs at least a description"
-		f.setFocus(fieldDescription)
+		f.err = "A task needs a title"
+		f.setFocus(fieldTitle)
 		return nil
 	}
 
@@ -362,11 +408,11 @@ func (m *Model) submitForm() tea.Cmd {
 
 	switch kind {
 	case PromptAdd:
-		m.addTask(description)
+		m.addTaskWithDetails(description, values[fieldDescription])
 	case PromptAddChild:
-		m.addChild(target, description)
+		m.addChildWithDetails(target, description, values[fieldDescription])
 	case PromptEdit:
-		m.updateTaskFields(target, description)
+		m.updateTaskFields(target, description, values[fieldDescription])
 	}
 	return nil
 }

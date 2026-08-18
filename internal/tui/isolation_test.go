@@ -23,7 +23,7 @@ func TestTestsDoNotTouchTheRealConfig(t *testing.T) {
 
 	m := newTestModel(t, 100, 30)
 	press(t, m, "a")
-	fillForm(t, m, map[int]string{fieldDescription: "Isolation check"})
+	fillForm(t, m, map[int]string{fieldTitle: "Isolation check"})
 
 	after, afterErr := os.ReadFile(realConfig)
 	if (beforeErr == nil) != (afterErr == nil) || string(before) != string(after) {

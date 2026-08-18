@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 
 	"dragon-todo/internal/todotxt"
@@ -14,18 +15,20 @@ import (
 
 // Form fields, in tab order.
 const (
-	fieldDescription = iota
+	fieldTitle = iota
 	fieldProjects
 	fieldContexts
 	fieldDue
+	fieldDescription
 	fieldCount
 )
 
 var fieldLabels = [fieldCount]string{
-	"Description",
+	"Task",
 	"Projects (+)",
 	"Contexts (@)",
 	"Due date",
+	"Description",
 }
 
 var fieldHints = [fieldCount]string{
@@ -33,22 +36,27 @@ var fieldHints = [fieldCount]string{
 	"space-separated, e.g. dragon release",
 	"space-separated, e.g. work home",
 	"2026-08-30, today, tomorrow, +3d, +2w or mon",
+	"notes, context, and links (enter adds a line; ctrl+g saves)",
 }
 
-// form is the add/edit task popup: one text input per todo.txt attribute,
-// instead of making the user hand-edit a raw todo.txt line.
+// form is the add/edit task popup: short task attributes plus a multi-line
+// description stored as a private todo.txt extension.
 type form struct {
-	kind   PromptKind // PromptAdd, PromptAddChild or PromptEdit
-	title  string
-	target *todotxt.Task // the task being edited, or the parent of a new subtask
-	inputs [fieldCount]textinput.Model
-	focus  int
-	err    string
+	kind        PromptKind // PromptAdd, PromptAddChild or PromptEdit
+	title       string
+	target      *todotxt.Task // the task being edited, or the parent of a new subtask
+	inputs      [fieldCount]textinput.Model
+	description textarea.Model
+	focus       int
+	err         string
 }
 
 func newForm(kind PromptKind, title string, target *todotxt.Task, values [fieldCount]string) *form {
 	f := &form{kind: kind, title: title, target: target}
 	for i := range f.inputs {
+		if i == fieldDescription {
+			continue
+		}
 		in := textinput.New()
 		in.Prompt = ""
 		in.CharLimit = 512
@@ -56,16 +64,32 @@ func newForm(kind PromptKind, title string, target *todotxt.Task, values [fieldC
 		in.CursorEnd()
 		f.inputs[i] = in
 	}
+	f.description = textarea.New()
+	f.description.Prompt = ""
+	f.description.CharLimit = 4096
+	f.description.MaxHeight = 5
+	f.description.ShowLineNumbers = false
+	f.description.SetValue(values[fieldDescription])
+	f.description.CursorEnd()
 	f.inputs[f.focus].Focus()
 	return f
 }
 
 // setFocus moves the cursor to a field, wrapping at both ends.
 func (f *form) setFocus(i int) {
-	f.inputs[f.focus].Blur()
+	if f.focus == fieldDescription {
+		f.description.Blur()
+	} else {
+		f.inputs[f.focus].Blur()
+	}
 	f.focus = (i + fieldCount) % fieldCount
-	f.inputs[f.focus].Focus()
-	f.inputs[f.focus].CursorEnd()
+	if f.focus == fieldDescription {
+		f.description.Focus()
+		f.description.CursorEnd()
+	} else {
+		f.inputs[f.focus].Focus()
+		f.inputs[f.focus].CursorEnd()
+	}
 }
 
 func (f *form) values() [fieldCount]string {
@@ -73,6 +97,7 @@ func (f *form) values() [fieldCount]string {
 	for i, in := range f.inputs {
 		out[i] = in.Value()
 	}
+	out[fieldDescription] = f.description.Value()
 	return out
 }
 
@@ -86,7 +111,7 @@ func formValues(t *todotxt.Task) [fieldCount]string {
 		return out
 	}
 
-	out[fieldDescription] = stripOwnedTags(t.Description)
+	out[fieldTitle] = stripOwnedTags(t.Description)
 	out[fieldProjects] = strings.Join(t.Projects, " ")
 	out[fieldContexts] = strings.Join(t.Contexts, " ")
 
@@ -96,6 +121,7 @@ func formValues(t *todotxt.Task) [fieldCount]string {
 		// An unparseable due: value is shown as-is rather than silently dropped.
 		out[fieldDue] = raw
 	}
+	out[fieldDescription] = t.Details
 
 	return out
 }
