@@ -9,7 +9,8 @@ A terminal UI (TUI) for managing todo.txt files in Go, built with [bubbletea](ht
 - **Due dates**: Track task due dates; tasks marked overdue or due-soon with visual highlighting
 - **OS Notifications**: Background daemon (launchd on macOS) sends notifications for overdue/due-today tasks
 - **Configurable storage**: Todo file can live anywhere; path resolved via CLI flag, env var, config file, or default
-- **Interactive TUI**: Navigate, create, edit, delete, and toggle completion with keyboard shortcuts
+- **Interactive TUI**: A lazygit-style panel layout — task tree, projects, contexts and a
+  details pane — with folding, filtering, sorting and reordering from the keyboard
 
 ## Quick Start
 
@@ -57,21 +58,65 @@ The daemon runs periodically (default every 30 minutes) and sends notifications 
 ./dragon-todo --help
 ```
 
-## TUI Keybindings
+## The TUI
+
+The interface follows lazygit's layout: a column of numbered, bordered panels
+on the left and a details panel on the right. The focused panel is outlined in
+green, and the bottom bar shows the keybindings that apply to it.
+
+```
+╭─ 1 Status ───────────────────────────────╮╭─ 5 Details ──────────────────────╮
+│ todo.txt  2/11 done  9 open              ││  (B) Rewrite the TUI +dragon     │
+╰──────────────────────────────────────────╯│                                  │
+╭─ 2 Tasks ────────────────────────────────╮│  Status      open                │
+│ ▾ ○ (A) Ship dragon-todo v1 +d… tomorrow ││  Due         Tue 18 Aug (today)  │
+│ ├─ ▾ ○ (B) Rewrite the TUI to look today ││  Projects    +dragon             │
+│ │  ├─   ○ Panel borders and titles +drag…││  Contexts    @work               │
+│ │  ╰─   ✔ Tree guides for su… 2026-08-17 ││  Subtasks    1 of 2 done         │
+│ ╰─   ○ Write release notes +dragon in 7d ││                                  │
+╰───────────────────────────────── 2 of 11 ╯│    ○ Panel borders and titles    │
+╭─ 3 Projects ─────────────────────────────╮│    ✔ Tree guides for subtasks    │
+│  +dragon                             4/5 ││                                  │
+╰──────────────────────────────────────────╯╰──────────────────────────────────╯
+ a:add task  e:edit  space:toggle done  d:delete  p:cycle priority  ?:keybindings
+```
+
+Panels shrink and drop away on smaller terminals, tasks first in line for the
+space. The colors are Dracula Pro (Van Helsing), defined in
+`internal/tui/styles.go` as `lipgloss.CompleteColor`: exact hex when the
+terminal reports truecolor, palette indices otherwise — inside tmux
+(`TERM=tmux-256color`) a bare hex value would be quantized to the generic
+xterm-256 cube instead of the theme's own colors.
+
+### Keybindings
+
+Press `?` in the TUI for the same list.
 
 | Key | Action |
 |-----|--------|
-| `a` | Add new top-level task |
-| `A` | Add subtask under selected task |
-| `e` / `enter` | Edit selected task |
-| `d` | Delete selected task (blocked if it has subtasks) |
-| `space` / `x` | Toggle task completion |
-| `s` | Sort tasks by priority |
-| `j` / `down` | Move selection down |
-| `k` / `up` | Move selection up |
-| `/` | Filter tasks (fuzzy search) |
-| `?` | Show help |
+| `tab` / `shift+tab` | Cycle focus between panels |
+| `1`–`5` | Jump straight to a panel |
+| `j`/`k`, `g`/`G`, `ctrl+d`/`ctrl+u` | Move, jump to top/bottom, half-page |
+| `a` | Add a top-level task |
+| `A` | Add a subtask under the selection |
+| `e` / `enter` | Edit the selected task as a todo.txt line |
+| `d` | Delete the selected task and its subtasks (asks first) |
+| `space` / `x` | Toggle completion |
+| `p` | Cycle priority (A → B → C → none) |
+| `o` / `h` / `l` | Fold and unfold subtasks; `h`/`l` also walk the tree |
+| `ctrl+k` / `ctrl+j` | Move a task up or down among its siblings |
+| `s` | Sort menu (priority, due date, alphabetical, file order) |
+| `/` | Search tasks as you type |
+| `enter` (panel 3/4) | Filter by the selected project or context |
+| `H` | Hide or show completed tasks |
+| `c` | Clear all filters and sorting |
+| `r` | Reload the file from disk |
+| `?` | Keybindings |
 | `q` / `ctrl+c` | Quit |
+
+Filtering keeps a matching task's ancestors on screen, so subtasks never appear
+orphaned. Sorting and searching affect the display only; the file on disk keeps
+its order until you reorder tasks explicitly with `ctrl+j`/`ctrl+k`.
 
 ## File Format
 
@@ -102,7 +147,9 @@ Another parent task
 
 ## Configuration
 
-Configuration is stored in `~/.config/dragon-todo/config.json`:
+Configuration is stored in the OS config directory — on macOS that is
+`~/Library/Application Support/dragon-todo/config.json` (Go's `os.UserConfigDir`),
+not `~/.config`:
 
 ```json
 {
@@ -114,7 +161,7 @@ Configuration is stored in `~/.config/dragon-todo/config.json`:
 
 1. `--file` CLI flag (persisted to config)
 2. `DRAGON_TODO_FILE` environment variable
-3. Config file (`~/.config/dragon-todo/config.json`)
+3. Config file (`~/Library/Application Support/dragon-todo/config.json` on macOS)
 4. Default (`~/todo.txt`)
 
 ## Project Structure
@@ -146,11 +193,14 @@ Key test coverage:
 - **Sorting/grouping**: Parent-child relationships are maintained during reordering
 - **Notification dedup**: Same task is notified at most once per day
 - **Config precedence**: Flag/env/file/default resolution order is correct
+- **TUI layout**: Every rendered frame fills the terminal exactly, at seven terminal
+  sizes and with each popup open, so no panel can overflow or leave gaps
+- **TUI behavior**: Add/edit/delete/toggle/reorder are driven through real key presses
+  and asserted against the file on disk
 
 ## Future Enhancements
 
-- Edit form with inline field editing (priority, due date)
-- Recursive sorting (sort children within groups)
+- Structured edit form with per-field editing (priority, due date) instead of one raw line
 - Windows/Linux daemon support (currently macOS/launchd only)
 - Custom configuration options (theme, notification intervals, etc.)
 - Archive completed tasks to a separate file
@@ -167,13 +217,14 @@ Key test coverage:
 ### Sorting
 
 - **Group-stable sort**: Parent+children move together; only parent sort key matters
-- **View concern**: Sorting affects display order only, not disk order (unless explicitly saved)
-- **Sort on disk**: `S` keybinding triggers full re-sort and persists to file
+- **View concern**: The TUI's `s` menu sorts the display only; the file keeps its order
+- **Explicit reordering**: `ctrl+j`/`ctrl+k` swap siblings and persist, and are refused
+  while a sort or filter is active so that what you move is what you see
 
 ### Notifications
 
 - **Dedup**: One notification per task per calendar day (re-notifies daily while overdue)
-- **State**: SHA256-based task key + date stored in `~/.config/dragon-todo/notify_state.json`
+- **State**: SHA256-based task key + date stored in `notify_state.json` beside the config
 - **Daemon**: Stateless check mode runs on launchd schedule; loads state, notifies, updates state
 
 ## License

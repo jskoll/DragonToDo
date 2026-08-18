@@ -9,6 +9,11 @@ import (
 )
 
 func TestResolvePrecedence(t *testing.T) {
+	// Resolve persists the flag value it is given, so redirect HOME (which is
+	// what os.UserConfigDir resolves against) to keep that write inside the
+	// test's own directory rather than the developer's real config.
+	t.Setenv("HOME", t.TempDir())
+
 	// Save and clear original state
 	origEnv := os.Getenv("DRAGON_TODO_FILE")
 	origCfg, _ := loadConfig()
