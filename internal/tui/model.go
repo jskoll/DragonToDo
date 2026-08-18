@@ -150,6 +150,7 @@ func NewModel(fileFlag string) (*Model, error) {
 		Styles:    DefaultStyles(),
 		Keys:      DefaultKeyMap(),
 		focus:     PanelTasks,
+		hideDone:  true,
 		collapsed: make(map[*todotxt.Task]bool),
 		sortKey:   todotxt.SortByPriority,
 		input:     in,

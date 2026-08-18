@@ -133,8 +133,8 @@ func TestViewFillsTerminal(t *testing.T) {
 func TestSelectionMovesAndDetailsFollow(t *testing.T) {
 	m := newTestModel(t, 120, 40)
 
-	if got := len(m.rows); got != 11 {
-		t.Fatalf("got %d visible rows, want 11", got)
+	if got := len(m.rows); got != 9 {
+		t.Fatalf("got %d visible rows, want 9 open tasks", got)
 	}
 
 	press(t, m, "G")
@@ -235,8 +235,8 @@ func TestDeleteRemovesSubtree(t *testing.T) {
 	m := newTestModel(t, 120, 40)
 
 	press(t, m, "d", "y") // the first root task has four descendants
-	if len(m.rows) != 6 {
-		t.Fatalf("got %d rows after deleting a subtree, want 6", len(m.rows))
+	if len(m.rows) != 5 {
+		t.Fatalf("got %d rows after deleting a subtree, want 5", len(m.rows))
 	}
 
 	data, _ := os.ReadFile(m.TodoPath)
@@ -249,6 +249,15 @@ func TestAddSubtaskNestsUnderSelection(t *testing.T) {
 	m := newTestModel(t, 120, 40)
 
 	press(t, m, "A")
+	if got := m.form.inputs[fieldProjects].Value(); got != "dragon" {
+		t.Errorf("subtask projects = %q, want inherited dragon", got)
+	}
+	if got := m.form.inputs[fieldContexts].Value(); got != "work" {
+		t.Errorf("subtask contexts = %q, want inherited work", got)
+	}
+	if got := m.form.inputs[fieldDue].Value(); got != "2026-08-19" {
+		t.Errorf("subtask due date = %q, want inherited 2026-08-19", got)
+	}
 	fillForm(t, m, map[int]string{fieldTitle: "Tag the release"})
 
 	task := m.selectedTask()
@@ -290,13 +299,19 @@ func TestFilterByProjectAndSearch(t *testing.T) {
 func TestHideDoneAndPriorityCycle(t *testing.T) {
 	m := newTestModel(t, 120, 40)
 
-	press(t, m, "H")
 	for _, r := range m.rows {
 		if r.task.Done && len(r.task.Children) == 0 {
-			t.Fatalf("completed leaf %q still visible", r.task.Description)
+			t.Fatalf("completed leaf %q is visible by default", r.task.Description)
 		}
 	}
 	press(t, m, "H")
+	foundDone := false
+	for _, r := range m.rows {
+		foundDone = foundDone || r.task.Done
+	}
+	if !foundDone {
+		t.Fatal("H did not show completed tasks")
+	}
 
 	press(t, m, "p") // (A) -> (B)
 	if got := m.selectedTask().Priority; got != 'B' {
@@ -310,6 +325,7 @@ func TestHideDoneAndPriorityCycle(t *testing.T) {
 
 func TestMoveTaskReordersFile(t *testing.T) {
 	m := newTestModel(t, 120, 40)
+	press(t, m, "H") // show all so display order matches file order
 
 	// "Plan Q4 roadmap" is the last root task; move it above "File expenses".
 	for !strings.Contains(m.selectedTask().Description, "Plan Q4 roadmap") {
