@@ -7,16 +7,23 @@ import (
 )
 
 var (
-	todoFile string
+	todoFile    string
+	showVersion bool
 )
 
 func init() {
 	flag.StringVar(&todoFile, "file", "", "Path to todo.txt file")
+	flag.BoolVar(&showVersion, "version", false, "Show version")
+	flag.BoolVar(&showVersion, "v", false, "Show version")
 }
 
 // Execute parses flags and dispatches to subcommands.
 func Execute() error {
 	flag.Parse()
+	if showVersion {
+		fmt.Println("dragon-todo v0.1.0")
+		return nil
+	}
 	args := flag.Args()
 
 	if len(args) == 0 {

@@ -126,6 +126,15 @@ func formValues(t *todotxt.Task) [fieldCount]string {
 	return out
 }
 
+// childFormValues inherits the fields a subtask normally shares with its
+// parent, while keeping its own title and description blank.
+func childFormValues(parent *todotxt.Task) [fieldCount]string {
+	out := formValues(parent)
+	out[fieldTitle] = ""
+	out[fieldDescription] = ""
+	return out
+}
+
 const dateLayout = "2006-01-02"
 
 // stripOwnedTags removes the tokens the form manages from a description.

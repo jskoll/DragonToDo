@@ -177,7 +177,8 @@ func (m *Model) tasksPanel(l layoutSpec) string {
 	lines := make([]string, 0, height)
 	if len(m.rows) == 0 {
 		hint := "  No tasks yet — press a to add one."
-		if m.filterActive() || m.search != "" {
+		if m.filterProject != "" || m.filterContext != "" || m.search != "" ||
+			(m.hideDone && len(m.Doc.GetAllTasks()) > 0) {
 			hint = "  Nothing matches the current filters (c to clear)."
 		}
 		lines = append(lines, renderSegs([]seg{{hint, s.Dim}}, inner, nil))

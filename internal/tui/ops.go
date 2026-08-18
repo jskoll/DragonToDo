@@ -396,10 +396,10 @@ func (m *Model) clearFilters() {
 	m.filterProject = ""
 	m.filterContext = ""
 	m.search = ""
-	m.hideDone = false
+	m.hideDone = true
 	m.sorted = false
 	m.rebuild()
-	m.notify("Filters cleared")
+	m.notify("Filters cleared; showing open tasks")
 }
 
 func shorten(s string, n int) string {

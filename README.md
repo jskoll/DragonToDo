@@ -200,7 +200,6 @@ Key test coverage:
 
 ## Future Enhancements
 
-- Structured edit form with per-field editing (priority, due date) instead of one raw line
 - Windows/Linux daemon support (currently macOS/launchd only)
 - Custom configuration options (theme, notification intervals, etc.)
 - Archive completed tasks to a separate file

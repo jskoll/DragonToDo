@@ -81,7 +81,7 @@ func (m *Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.hideDone {
 			m.notify("Hiding completed tasks")
 		} else {
-			m.notify("Showing completed tasks")
+			m.notify("Showing all tasks")
 		}
 		return m, nil
 	case key.Matches(msg, m.Keys.ClearFilt):
@@ -148,7 +148,7 @@ func (m *Model) handleTasksKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.fail("No task selected")
 			break
 		}
-		m.openForm(PromptAddChild, "New subtask of "+shorten(task.Description, 30), task, formValues(nil))
+		m.openForm(PromptAddChild, "New subtask of "+shorten(task.Description, 30), task, childFormValues(task))
 	case key.Matches(msg, m.Keys.Edit):
 		if task == nil {
 			m.fail("No task selected")
