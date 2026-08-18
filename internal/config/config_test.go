@@ -4,12 +4,25 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"dragon-todo/internal/paths"
 )
 
 func TestResolvePrecedence(t *testing.T) {
-	// Save original env
+	// Save and clear original state
 	origEnv := os.Getenv("DRAGON_TODO_FILE")
-	defer os.Setenv("DRAGON_TODO_FILE", origEnv)
+	origCfg, _ := loadConfig()
+	defer func() {
+		os.Setenv("DRAGON_TODO_FILE", origEnv)
+		if origCfg != nil {
+			saveConfig(origCfg)
+		} else {
+			cfgPath, _ := paths.ConfigFile()
+			if cfgPath != "" {
+				os.Remove(cfgPath)
+			}
+		}
+	}()
 
 	tests := []struct {
 		name    string
@@ -36,6 +49,12 @@ func TestResolvePrecedence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Clean config before each test
+			cfgPath, _ := paths.ConfigFile()
+			if cfgPath != "" {
+				os.Remove(cfgPath)
+			}
+
 			os.Setenv("DRAGON_TODO_FILE", tt.envVar)
 
 			path, err := Resolve(tt.flag)
