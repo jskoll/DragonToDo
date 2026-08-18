@@ -1,31 +1,19 @@
 package cmd
 
 import (
-	"os"
+	tea "github.com/charmbracelet/bubbletea"
 
-	"dragon-todo/internal/config"
-	"dragon-todo/internal/todotxt"
+	"dragon-todo/internal/tui"
 )
 
 // TUI launches the interactive TUI application.
 func TUI(fileFlag string) error {
-	// Resolve the todo file path
-	todoPath, err := config.Resolve(fileFlag)
+	m, err := tui.NewModel(fileFlag)
 	if err != nil {
 		return err
 	}
 
-	// Load or create the todo.txt file
-	data, err := os.ReadFile(todoPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		// File doesn't exist yet, create empty on first save
-	} else {
-		_ = todotxt.LoadDocument(data)
-	}
-
-	// TODO: Implement TUI
-	return nil
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	_, err = p.Run()
+	return err
 }
