@@ -1,0 +1,12 @@
+(A) Buy milk +shopping @home due:2026-08-20
+(B) Write report +work @office created:2026-08-01
+x 2026-08-15 2026-08-10 Completed task @done
+Review code +work @office
+  Review PR #123
+  Check test coverage
+  Finalize approval
+Call dentist +health @phone due:2026-08-18
+
+(C) Low priority task
+  Fix minor bug +code
+  Write tests for fix
