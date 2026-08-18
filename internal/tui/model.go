@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -16,6 +17,13 @@ const (
 	ModeList Mode = iota
 	ModeForm
 	ModeConfirm
+)
+
+type Panel int
+
+const (
+	PanelList Panel = iota
+	PanelDetails
 )
 
 type FormMode int
@@ -42,6 +50,7 @@ type Model struct {
 	ConfirmMsg   string
 	ConfirmTask  *todotxt.Task
 	ConfirmIdx   int
+	ActivePanel  Panel
 }
 
 // NewModel creates a new TUI model.
@@ -65,11 +74,12 @@ func NewModel(fileFlag string) (*Model, error) {
 	}
 
 	m := &Model{
-		Doc:      doc,
-		TodoPath: todoPath,
-		Mode:     ModeList,
-		Styles:   DefaultStyles(),
-		Keys:     DefaultKeyMap(),
+		Doc:         doc,
+		TodoPath:    todoPath,
+		Mode:        ModeList,
+		Styles:      DefaultStyles(),
+		Keys:        DefaultKeyMap(),
+		ActivePanel: PanelList,
 	}
 
 	return m, nil
@@ -115,6 +125,14 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "d", "delete":
 		m.startDeleteTask()
+		return m, nil
+
+	case "tab":
+		if m.ActivePanel == PanelList {
+			m.ActivePanel = PanelDetails
+		} else {
+			m.ActivePanel = PanelList
+		}
 		return m, nil
 
 	// Navigation
@@ -233,28 +251,213 @@ func (m *Model) View() string {
 }
 
 func (m *Model) viewList() string {
-	var s string
+	if m.Width == 0 || m.Height == 0 {
+		return "Loading..."
+	}
 
-	// Title
-	s += m.Styles.Title.Render("✓ Dragon Todo") + "\n"
+	var output strings.Builder
 
-	// List
+	// Split width between left (list) and right (details)
+	leftWidth := m.Width * 60 / 100
+	if leftWidth < 30 {
+		leftWidth = 30
+	}
+	rightWidth := m.Width - leftWidth - 1
+
+	// Reserve space for status + help (2 lines)
+	contentHeight := m.Height - 2
+	if contentHeight < 3 {
+		contentHeight = 3
+	}
+
+	// Render left panel (list)
+	leftPanel := m.renderLeftPanel(leftWidth, contentHeight)
+
+	// Render right panel (details)
+	rightPanel := m.renderRightPanel(rightWidth, contentHeight)
+
+	// Combine panels side-by-side
+	leftLines := splitLines(leftPanel, leftWidth)
+	rightLines := splitLines(rightPanel, rightWidth)
+
+	maxLines := contentHeight
+	if len(leftLines) > maxLines {
+		leftLines = leftLines[:maxLines]
+	}
+	if len(rightLines) > maxLines {
+		rightLines = rightLines[:maxLines]
+	}
+
+	for i := 0; i < maxLines; i++ {
+		left := ""
+		right := ""
+		if i < len(leftLines) {
+			left = leftLines[i]
+		}
+		right = padRight(left, leftWidth)
+		if i < len(rightLines) {
+			right += " " + rightLines[i]
+		}
+		output.WriteString(right)
+		output.WriteString("\n")
+	}
+
+	// Status and help
+	status := m.Message
+	if status == "" {
+		status = "Ready"
+	}
+	output.WriteString(m.Styles.Status.Render(status))
+	output.WriteString("\n")
+	output.WriteString(m.Styles.Help.Render("Tab:panel  ↑↓/jk:nav  Space:toggle  a:add  d:delete  q:quit\n"))
+
+	return output.String()
+}
+
+func (m *Model) renderLeftPanel(width, height int) string {
+	var sb strings.Builder
+
+	// Panel title with border
+	title := " Tasks "
+	titleBar := "─"
+	if m.ActivePanel == PanelList {
+		sb.WriteString(m.Styles.PanelTitle.Render(title))
+		sb.WriteString(m.Styles.PanelBorder.Render(padRight(strings.Repeat(titleBar, width-len(title)), width-len(title))))
+	} else {
+		sb.WriteString(m.Styles.PanelTitleInactive.Render(title))
+		sb.WriteString(m.Styles.PanelBorder.Render(padRight(strings.Repeat(titleBar, width-len(title)), width-len(title))))
+	}
+	sb.WriteString("\n")
+
+	// List content
 	items := m.getListItems()
-	for i, item := range items {
-		li := item.(ListItem)
-		rendered := RenderItem(li, m.Styles, i == m.SelectedIdx)
-		s += rendered + "\n"
+	listHeight := height - 1
+	for i := 0; i < listHeight && i < len(items); i++ {
+		li := items[i].(ListItem)
+		isSelected := i == m.SelectedIdx
+		rendered := RenderItem(li, m.Styles, isSelected)
+		// Truncate to width
+		if len(rendered) > width {
+			rendered = rendered[:width]
+		}
+		sb.WriteString(padRight(rendered, width))
+		sb.WriteString("\n")
 	}
 
-	// Status line
-	if m.Message != "" {
-		s += m.Styles.Status.Render(m.Message) + "\n"
+	// Fill remaining space
+	for i := len(items); i < listHeight; i++ {
+		sb.WriteString(padRight("", width))
+		sb.WriteString("\n")
 	}
 
-	// Help line
-	s += m.Styles.Help.Render("a:add  d:delete  space:toggle  ?:help  q:quit\n")
+	return sb.String()
+}
 
-	return s
+func (m *Model) renderRightPanel(width, height int) string {
+	var sb strings.Builder
+
+	// Panel title with border
+	title := " Details "
+	titleBar := "─"
+	if m.ActivePanel == PanelDetails {
+		sb.WriteString(m.Styles.PanelTitle.Render(title))
+		sb.WriteString(m.Styles.PanelBorder.Render(padRight(strings.Repeat(titleBar, width-len(title)), width-len(title))))
+	} else {
+		sb.WriteString(m.Styles.PanelTitleInactive.Render(title))
+		sb.WriteString(m.Styles.PanelBorder.Render(padRight(strings.Repeat(titleBar, width-len(title)), width-len(title))))
+	}
+	sb.WriteString("\n")
+
+	panelHeight := height - 1
+	items := m.getListItems()
+
+	// Show details of selected task
+	if m.SelectedIdx < len(items) {
+		task := items[m.SelectedIdx].(ListItem).Task
+		details := formatTaskDetails(task, width)
+		lines := splitLines(details, width)
+		for i := 0; i < panelHeight && i < len(lines); i++ {
+			sb.WriteString(padRight(lines[i], width))
+			sb.WriteString("\n")
+		}
+		for i := len(lines); i < panelHeight; i++ {
+			sb.WriteString(padRight("", width))
+			sb.WriteString("\n")
+		}
+	} else {
+		// No task selected
+		msg := "No task selected"
+		sb.WriteString(padRight(msg, width))
+		sb.WriteString("\n")
+		for i := 1; i < panelHeight; i++ {
+			sb.WriteString(padRight("", width))
+			sb.WriteString("\n")
+		}
+	}
+
+	return sb.String()
+}
+
+func formatTaskDetails(task *todotxt.Task, width int) string {
+	var sb strings.Builder
+	sb.WriteString("Description:\n")
+	sb.WriteString("  " + task.Description + "\n\n")
+
+	if task.Priority != 0 {
+		sb.WriteString(fmt.Sprintf("Priority: (%c)\n\n", task.Priority))
+	}
+
+	if dueStr := task.DueString(); dueStr != "" {
+		sb.WriteString("Due: " + dueStr + "\n\n")
+	}
+
+	if len(task.Contexts) > 0 {
+		sb.WriteString("Contexts:\n")
+		for _, c := range task.Contexts {
+			sb.WriteString("  @" + c + "\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(task.Projects) > 0 {
+		sb.WriteString("Projects:\n")
+		for _, p := range task.Projects {
+			sb.WriteString("  +" + p + "\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(task.Children) > 0 {
+		sb.WriteString(fmt.Sprintf("Subtasks: %d\n", len(task.Children)))
+	}
+
+	if task.Done {
+		sb.WriteString("\nStatus: DONE ✓")
+	}
+
+	return sb.String()
+}
+
+func splitLines(text string, width int) []string {
+	lines := make([]string, 0)
+	for _, line := range strings.Split(text, "\n") {
+		if len(line) > width {
+			lines = append(lines, line[:width])
+		} else {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+func padRight(s string, width int) string {
+	if len(s) >= width {
+		if len(s) > width {
+			return s[:width]
+		}
+		return s
+	}
+	return s + strings.Repeat(" ", width-len(s))
 }
 
 func (m *Model) viewConfirm() string {

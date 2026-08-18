@@ -5,18 +5,21 @@ import (
 )
 
 type Styles struct {
-	Base         lipgloss.Style
-	Title        lipgloss.Style
-	Item         lipgloss.Style
-	SelectedItem lipgloss.Style
-	OverdueTask  lipgloss.Style
-	DueSoonTask  lipgloss.Style
-	DoneTask     lipgloss.Style
-	PriorityA    lipgloss.Style
-	PriorityB    lipgloss.Style
-	PriorityC    lipgloss.Style
-	Help         lipgloss.Style
-	Status       lipgloss.Style
+	Base              lipgloss.Style
+	Title             lipgloss.Style
+	Item              lipgloss.Style
+	SelectedItem      lipgloss.Style
+	OverdueTask       lipgloss.Style
+	DueSoonTask       lipgloss.Style
+	DoneTask          lipgloss.Style
+	PriorityA         lipgloss.Style
+	PriorityB         lipgloss.Style
+	PriorityC         lipgloss.Style
+	Help              lipgloss.Style
+	Status            lipgloss.Style
+	PanelTitle        lipgloss.Style
+	PanelTitleInactive lipgloss.Style
+	PanelBorder       lipgloss.Style
 }
 
 func DefaultStyles() Styles {
@@ -57,5 +60,16 @@ func DefaultStyles() Styles {
 		Status: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("14")).
 			Italic(true),
+		PanelTitle: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("11")).
+			Background(lipgloss.Color("8")).
+			Bold(true).
+			Padding(0, 1),
+		PanelTitleInactive: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")).
+			Background(lipgloss.Color("0")).
+			Padding(0, 1),
+		PanelBorder: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")),
 	}
 }
