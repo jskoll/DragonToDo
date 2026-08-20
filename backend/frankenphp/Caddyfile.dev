@@ -1,0 +1,20 @@
+{
+	frankenphp
+	{$CADDY_GLOBAL_OPTIONS}
+}
+
+{$CADDY_EXTRA_CONFIG}
+
+{$SERVER_NAME:localhost} {
+	log {
+		output stdout
+		format json
+	}
+
+	root * /app/public
+	encode zstd gzip
+
+	# No worker mode in dev: the kernel is booted fresh per request, so bind-mounted
+	# source changes take effect without restarting the container.
+	php_server
+}

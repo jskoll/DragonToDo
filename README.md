@@ -179,7 +179,19 @@ dragon-todo/
     launchd/         # macOS daemon integration
     tui/             # Interactive terminal UI
     paths/           # Config/log file paths
+    apiclient/       # Go client for backend/'s REST API (not yet wired into the TUI)
+  backend/           # Symfony/API Platform REST API for shared, multi-user task
+                      # storage — see backend/README.md
 ```
+
+## Backend API
+
+`backend/` is a separate Symfony 8 + API Platform service (run via FrankenPHP)
+that stores tasks in SQLite/MySQL/PostgreSQL behind JWT-authenticated, per-user
+REST endpoints, so multiple clients (this TUI, a future web UI, etc.) can share
+one backend instead of each reading a local `todo.txt` file. It is not yet wired
+into the TUI above — see `backend/README.md` for setup, and `internal/apiclient/`
+for a minimal Go client against it.
 
 ## Testing
 

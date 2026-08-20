@@ -1,0 +1,56 @@
+name: dragontodo-backend
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: frankenphp/Dockerfile
+      target: dev
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-localhost}
+      # Default: SQLite, no database service needed at all — `docker compose up`
+      # works standalone. Point this at the mysql/postgres service below (or an
+      # external database) to use a different engine.
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///%kernel.project_dir%/var/data.db}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+
+  # Opt-in database services: `docker compose --profile mysql up` or
+  # `docker compose --profile postgres up`. Not started by a plain `docker compose up`.
+  mysql:
+    image: mysql:8.0
+    profiles: ["mysql"]
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: dragontodo
+      MYSQL_USER: app
+      MYSQL_PASSWORD: "!ChangeMe!"
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dragontodo
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: "!ChangeMe!"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  caddy_data:
+  caddy_config:
+  mysql_data:
+  postgres_data:
