@@ -8,7 +8,7 @@ services:
       target: dev
     restart: unless-stopped
     environment:
-      SERVER_NAME: ${SERVER_NAME:-localhost}
+      SERVER_NAME: ${SERVER_NAME:-http://localhost}
       # DATABASE_URL is deliberately NOT set here. In dev the whole backend/
       # directory is bind-mounted (see compose.override.yaml), so Symfony's own
       # .env/.env.local loading inside the container already resolves it

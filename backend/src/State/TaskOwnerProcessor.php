@@ -9,6 +9,8 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\Task;
 use App\Entity\User;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -34,6 +36,7 @@ final class TaskOwnerProcessor implements ProcessorInterface
 {
     public function __construct(
         private readonly Security $security,
+        private readonly EntityManagerInterface $entityManager,
         #[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')]
         private readonly ProcessorInterface $persistProcessor,
         #[Autowire(service: 'api_platform.doctrine.orm.state.remove_processor')]
@@ -62,15 +65,23 @@ final class TaskOwnerProcessor implements ProcessorInterface
             $this->assertOwnedByCurrentUser($data);
         }
 
-        $parent = $data->getParentTask();
-        if (null !== $parent) {
-            if ($parent->getOwner()?->getId() !== $user->getId()) {
-                throw new UnprocessableEntityHttpException('parentTask must belong to the current user.');
+        return $this->entityManager->wrapInTransaction(function () use ($data, $operation, $uriVariables, $context, $user, $isCreate): mixed {
+            if (!$isCreate) {
+                $this->lockTaskById($data->getId());
             }
-            $this->assertNoCycle($data, $parent);
-        }
 
-        return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+            $parent = $data->getParentTask();
+            if (null !== $parent) {
+                $lockedParent = $this->lockTaskById($parent->getId());
+                if ($lockedParent->getOwner()?->getId() !== $user->getId()) {
+                    throw new UnprocessableEntityHttpException('parentTask must belong to the current user.');
+                }
+                $this->assertNoCycle($data, $lockedParent);
+                $data->setParentTask($lockedParent);
+            }
+
+            return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+        });
     }
 
     /**
@@ -85,11 +96,26 @@ final class TaskOwnerProcessor implements ProcessorInterface
     {
         $ancestor = $parent;
         while (null !== $ancestor) {
-            if ($ancestor === $data) {
+            if ($ancestor->getId() === $data->getId()) {
                 throw new UnprocessableEntityHttpException('parentTask cannot be the task itself or one of its own descendants.');
             }
-            $ancestor = $ancestor->getParentTask();
+            $next = $ancestor->getParentTask();
+            $ancestor = null !== $next ? $this->lockTaskById($next->getId()) : null;
         }
+    }
+
+    private function lockTaskById(?int $id): Task
+    {
+        if (null === $id) {
+            throw new UnprocessableEntityHttpException('parentTask must reference a persisted task.');
+        }
+
+        $task = $this->entityManager->find(Task::class, $id, LockMode::PESSIMISTIC_WRITE);
+        if (!$task instanceof Task) {
+            throw new UnprocessableEntityHttpException('parentTask does not exist.');
+        }
+
+        return $task;
     }
 
     private function assertOwnedByCurrentUser(mixed $data): void
