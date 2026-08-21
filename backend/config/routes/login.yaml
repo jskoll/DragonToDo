@@ -1,0 +1,6 @@
+# Registers /api/login as a real route so routing resolves it before the security
+# firewall's json_login listener intercepts the request — json_login needs a matching
+# route to exist even though it never reaches a controller.
+api_login:
+    path: /api/login
+    methods: [POST]

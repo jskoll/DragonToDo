@@ -1,0 +1,31 @@
+{
+	frankenphp {
+		{$FRANKENPHP_CONFIG}
+	}
+
+	{$CADDY_GLOBAL_OPTIONS}
+}
+
+{$CADDY_EXTRA_CONFIG}
+
+{$SERVER_NAME:localhost} {
+	log {
+		output stdout
+		format json
+	}
+
+	root * /app/public
+	encode zstd gzip
+
+	@matchAssets {
+		path_regexp \.(jpg|jpeg|gif|png|svg|webp|css|js|woff|woff2|ttf|eot|ico)$
+	}
+	header @matchAssets Cache-Control "public, max-age=31536000, immutable"
+
+	php_server {
+		# Worker mode boots the Symfony kernel once and keeps it warm across
+		# requests instead of bootstrapping PHP/Symfony on every request; disabled
+		# automatically when APP_ENV=dev via the conf.d/20-app.dev.ini override.
+		worker /app/public/index.php {$FRANKENPHP_NUM_THREADS:4}
+	}
+}

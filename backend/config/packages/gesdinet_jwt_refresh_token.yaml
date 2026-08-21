@@ -1,0 +1,34 @@
+gesdinet_jwt_refresh_token:
+    refresh_token_class: App\Entity\RefreshToken
+
+    # Refresh tokens live 30 days; the short-lived JWT access token (see
+    # lexik_jwt_authentication.yaml / JWT_TOKEN_TTL) is what actually expires quickly.
+    ttl: 2592000
+
+    # Rotation: every refresh consumes the token and issues a brand new one, so a stolen
+    # refresh token is only useful until the legitimate client's next refresh.
+    single_use: true
+
+    # A copy of the database alone can't be replayed to mint new access tokens.
+    hash_tokens:
+        enabled: true
+
+    # NOTE: reuse_detection (revoking a token family when a spent single-use token is
+    # replayed) is not enabled here — as of this bundle version its DI wiring for the
+    # cache-backed spent-token registry doesn't resolve cleanly under Symfony 8's
+    # container compilation (a %param%-as-service-id reference fails to resolve).
+    # single_use rotation below already bounds a stolen refresh token's usefulness to
+    # "until the legitimate client's next refresh"; revisit enabling reuse_detection
+    # once the bundle has confirmed Symfony 8 support.
+    reuse_detection:
+        enabled: false
+
+    # NOTE: this bundle's own `rate_limiter` option has the same %param%-as-service-id
+    # DI wiring problem as reuse_detection above (it isn't just enabled:false-able,
+    # its "limiter" child is required as soon as the key is present at all). Throttling
+    # POST /api/token/refresh is instead handled by Symfony core's `login_throttling` on
+    # the "refresh" firewall in security.yaml, which achieves the same thing without
+    # depending on this bundle's (currently broken under Symfony 8) integration.
+
+    api_platform:
+        enabled: true
