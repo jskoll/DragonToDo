@@ -9,10 +9,15 @@ services:
     restart: unless-stopped
     environment:
       SERVER_NAME: ${SERVER_NAME:-localhost}
-      # Default: SQLite, no database service needed at all — `docker compose up`
-      # works standalone. Point this at the mysql/postgres service below (or an
-      # external database) to use a different engine.
-      DATABASE_URL: ${DATABASE_URL:-sqlite:///%kernel.project_dir%/var/data.db}
+      # DATABASE_URL is deliberately NOT set here. In dev the whole backend/
+      # directory is bind-mounted (see compose.override.yaml), so Symfony's own
+      # .env/.env.local loading inside the container already resolves it
+      # correctly — injecting it from Compose as well would just override
+      # whatever a developer put in .env.local with this file's own resolution,
+      # since a real container env var always wins over a .env file's value.
+      # A production deployment (no bind mount, so no .env.local in the image)
+      # should inject DATABASE_URL via its own environment:/env_file:/secret
+      # instead of relying on this file.
     volumes:
       - caddy_data:/data
       - caddy_config:/config

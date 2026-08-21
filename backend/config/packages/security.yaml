@@ -3,10 +3,13 @@ security:
         App\Entity\User: 'auto'
 
     providers:
+        # No `property` option: App\Repository\UserRepository implements Symfony's
+        # UserLoaderInterface (loadUserByIdentifier), which normalizes case before
+        # querying — see that method's docblock. Setting `property: email` here would
+        # bypass it in favor of an exact-match findOneBy().
         app_user_provider:
             entity:
                 class: App\Entity\User
-                property: email
 
     firewalls:
         dev:

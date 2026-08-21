@@ -75,6 +75,25 @@ final class AuthenticationTest extends FunctionalTestCase
         self::assertResponseStatusCodeSame(401);
     }
 
+    public function testLoginIsCaseInsensitiveOnEmail(): void
+    {
+        $client = static::createClient();
+
+        $client->request('POST', '/api/register', [
+            'json' => ['email' => 'Frank@Example.com', 'password' => 'correct-horse-battery-staple'],
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        // Registration normalizes to lowercase.
+        self::assertSame('frank@example.com', $client->getResponse()->toArray()['email']);
+
+        // Logging in with the original, differently-cased address must still work.
+        $client->request('POST', '/api/login', [
+            'json' => ['email' => 'Frank@Example.com', 'password' => 'correct-horse-battery-staple'],
+        ]);
+        self::assertResponseIsSuccessful();
+        self::assertArrayHasKey('token', $client->getResponse()->toArray());
+    }
+
     public function testRefreshTokenIssuesNewAccessToken(): void
     {
         $client = static::createClient();

@@ -25,7 +25,10 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
  *  - parentTask: rejects linking to a task owned by someone else. The IRI is
  *    normally already unresolvable for another user's task (same query-extension
  *    scoping applies when API Platform dereferences the IRI), this is a second,
- *    explicit check in case that ever changes.
+ *    explicit check in case that ever changes. Also rejects a parentTask that would
+ *    create a cycle (the task itself, or one of its own descendants) — nothing else
+ *    stops a same-owner PATCH from doing that, and a cycle breaks hierarchy traversal
+ *    and cascade-delete semantics.
  */
 final class TaskOwnerProcessor implements ProcessorInterface
 {
@@ -60,11 +63,33 @@ final class TaskOwnerProcessor implements ProcessorInterface
         }
 
         $parent = $data->getParentTask();
-        if (null !== $parent && $parent->getOwner()?->getId() !== $user->getId()) {
-            throw new UnprocessableEntityHttpException('parentTask must belong to the current user.');
+        if (null !== $parent) {
+            if ($parent->getOwner()?->getId() !== $user->getId()) {
+                throw new UnprocessableEntityHttpException('parentTask must belong to the current user.');
+            }
+            $this->assertNoCycle($data, $parent);
         }
 
         return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+    }
+
+    /**
+     * Rejects $parent if setting $data->parentTask = $parent would create a cycle, i.e.
+     * if $data is reachable from $parent by following parentTask pointers zero or more
+     * times (parent === data covers "self", walking further covers "one of its own
+     * descendants"). Relies on Doctrine's identity map: within one request, the same row
+     * is always the same object instance, so `===` correctly detects "this is the task
+     * being saved" even after Doctrine reloads it by following an association.
+     */
+    private function assertNoCycle(Task $data, Task $parent): void
+    {
+        $ancestor = $parent;
+        while (null !== $ancestor) {
+            if ($ancestor === $data) {
+                throw new UnprocessableEntityHttpException('parentTask cannot be the task itself or one of its own descendants.');
+            }
+            $ancestor = $ancestor->getParentTask();
+        }
     }
 
     private function assertOwnedByCurrentUser(mixed $data): void

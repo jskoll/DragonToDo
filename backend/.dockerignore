@@ -1,5 +1,10 @@
 .env.local
 .env.*.local
+# Locally-generated JWT keypair (see `bin/console lexik:jwt:generate-keypair`):
+# never let it get baked into an image layer. Prod provisions its own keypair
+# at deploy time (mounted secret/volume), not by rebuilding the image with a
+# developer's local keys — see "Local secrets" in README.md.
+/config/jwt/*.pem
 /var/
 /vendor/
 /.git/

@@ -31,7 +31,10 @@ const (
 
 // Client is a small, stateful HTTP client for the dragon-todo API: it holds the
 // current access/refresh token pair and transparently refreshes the access token
-// once on a 401 before retrying a request.
+// once on a 401 before retrying a request. Safe for concurrent use: concurrent
+// requests that all hit a 401 at once coalesce into a single refresh (see do()),
+// which matters because refresh tokens are single-use — without that coalescing,
+// only one of several simultaneous refresh attempts could ever succeed.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
@@ -39,6 +42,10 @@ type Client struct {
 	mu           sync.Mutex
 	accessToken  string
 	refreshToken string
+
+	// Serializes refresh() calls so concurrent 401s don't each spend the (single-use)
+	// refresh token; see refreshIfStillStale.
+	refreshMu sync.Mutex
 }
 
 // New creates a Client for the API rooted at baseURL (e.g. "https://api.example.com",
@@ -54,19 +61,30 @@ func New(baseURL string, httpClient *http.Client) *Client {
 	}
 }
 
-// APIError represents an RFC 7807 problem+json error response from the API.
+// APIError represents an error response from the API. Most endpoints (API Platform's
+// own, including /api/login and /api/token/refresh) return RFC 7807 problem+json
+// (title/detail); /api/register's dedicated controller instead returns its own
+// {"error": "...", "violations": {...}} shape (see RegistrationController.php) — Message
+// and Violations decode that one. decodeAPIError treats Message as a fallback for
+// Detail so Error() reads sensibly regardless of which shape a given endpoint used.
 type APIError struct {
 	StatusCode int
-	Title      string `json:"title"`
-	Detail     string `json:"detail"`
+	Title      string            `json:"title"`
+	Detail     string            `json:"detail"`
+	Message    string            `json:"error"`
+	Violations map[string]string `json:"violations,omitempty"`
 }
 
 func (e *APIError) Error() string {
+	msg := fmt.Sprintf("apiclient: %d %s", e.StatusCode, e.Title)
 	if e.Detail != "" {
-		return fmt.Sprintf("apiclient: %d %s: %s", e.StatusCode, e.Title, e.Detail)
+		msg += ": " + e.Detail
+	}
+	if len(e.Violations) > 0 {
+		msg += fmt.Sprintf(" (violations: %v)", e.Violations)
 	}
 
-	return fmt.Sprintf("apiclient: %d %s", e.StatusCode, e.Title)
+	return msg
 }
 
 type tokenPairResponse struct {
@@ -182,6 +200,10 @@ func (c *Client) requestTokens(ctx context.Context, path string, body []byte, co
 // do performs an authenticated request, retrying exactly once via refresh() if the
 // first attempt comes back 401 Unauthorized (the access token has expired).
 func (c *Client) do(ctx context.Context, method, path string, body []byte, contentType string) (*http.Response, error) {
+	c.mu.Lock()
+	tokenUsed := c.accessToken
+	c.mu.Unlock()
+
 	resp, err := c.doOnce(ctx, method, path, body, contentType)
 	if err != nil {
 		return nil, err
@@ -192,11 +214,32 @@ func (c *Client) do(ctx context.Context, method, path string, body []byte, conte
 	}
 	resp.Body.Close()
 
-	if err := c.refresh(ctx); err != nil {
+	if err := c.refreshIfStillStale(ctx, tokenUsed); err != nil {
 		return nil, fmt.Errorf("apiclient: refreshing access token after 401: %w", err)
 	}
 
 	return c.doOnce(ctx, method, path, body, contentType)
+}
+
+// refreshIfStillStale calls refresh(), unless another concurrent call already did so
+// since staleToken (the access token that just got a 401) was read. Refresh tokens are
+// single-use, so without this, two goroutines hitting a 401 at the same moment would
+// both call refresh(): one succeeds, the other's refresh token has already been spent
+// and fails outright even though the client is, courtesy of the first goroutine, now
+// perfectly authenticated.
+func (c *Client) refreshIfStillStale(ctx context.Context, staleToken string) error {
+	c.refreshMu.Lock()
+	defer c.refreshMu.Unlock()
+
+	c.mu.Lock()
+	current := c.accessToken
+	c.mu.Unlock()
+	if current != staleToken {
+		// Someone else already refreshed while we were waiting for refreshMu.
+		return nil
+	}
+
+	return c.refresh(ctx)
 }
 
 func (c *Client) doOnce(ctx context.Context, method, path string, body []byte, contentType string) (*http.Response, error) {
@@ -235,6 +278,9 @@ func decodeAPIError(resp *http.Response) error {
 	_ = json.NewDecoder(resp.Body).Decode(apiErr)
 	if apiErr.Title == "" {
 		apiErr.Title = http.StatusText(resp.StatusCode)
+	}
+	if apiErr.Detail == "" {
+		apiErr.Detail = apiErr.Message
 	}
 
 	return apiErr

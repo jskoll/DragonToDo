@@ -64,8 +64,7 @@ RUN composer install --prefer-dist --no-dev --no-autoloader --no-scripts --no-pr
     && sync
 
 RUN mkdir -p var/cache var/log \
-    && setfacl -R -m u:www-data:rwX -m u:"$(whoami)":rwX var \
-    && setfacl -dR -m u:www-data:rwX -m u:"$(whoami)":rwX var
+    && chown -R www-data:www-data var
 
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]

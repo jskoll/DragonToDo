@@ -34,6 +34,38 @@ func (e *extensions) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// NullableString distinguishes, for a PATCH request, "leave this field unchanged"
+// (omit it), "clear this field" (send JSON null), and "set this field" (send a value)
+// — a plain *string can only express the first and third, since a nil pointer looks
+// the same either way once marshaled with `omitempty`.
+//
+// Used via a *NullableString field on TaskInput: the outer pointer's nilness controls
+// omission (encoding/json's `omitempty` only omits a nil pointer, never a struct value,
+// which is why the field has to be a pointer at all), and the inner Value's nilness
+// controls null-vs-value. Build one with NullClear() or NullSet(...), never a bare
+// &NullableString{...} literal.
+type NullableString struct {
+	Value *string
+}
+
+// NullClear clears a field via PATCH (sends JSON null).
+func NullClear() *NullableString {
+	return &NullableString{}
+}
+
+// NullSet sets a field to s via PATCH.
+func NullSet(s string) *NullableString {
+	return &NullableString{Value: &s}
+}
+
+func (n NullableString) MarshalJSON() ([]byte, error) {
+	if n.Value == nil {
+		return []byte("null"), nil
+	}
+
+	return json.Marshal(*n.Value)
+}
+
 // Task mirrors the JSON-LD representation of the Task API resource
 // (see backend/src/Entity/Task.php), a superset of internal/todotxt.Task's fields:
 // same description/details/priority/done/dates/projects/contexts, plus a real
@@ -59,20 +91,20 @@ type Task struct {
 }
 
 // TaskInput is the writable subset of Task, used for both creating (POST) and
-// partially updating (PATCH) a task. Fields left at their zero value are omitted
-// from PATCH requests; use pointers (e.g. new(bool) for `false`) when a zero value
-// must be sent explicitly.
+// partially updating (PATCH) a task. Fields left nil are omitted from PATCH requests
+// (leave unchanged). Priority, CompletedOn, DueDate, and ParentTask can additionally be
+// explicitly cleared with NullClear() — see NullableString.
 type TaskInput struct {
-	Description *string   `json:"description,omitempty"`
-	Details     *string   `json:"details,omitempty"`
-	Done        *bool     `json:"done,omitempty"`
-	Priority    *string   `json:"priority,omitempty"`
-	CreatedOn   *string   `json:"createdOn,omitempty"` // "2006-01-02"
-	CompletedOn *string   `json:"completedOn,omitempty"`
-	DueDate     *string   `json:"dueDate,omitempty"`
-	Projects    *[]string `json:"projects,omitempty"`
-	Contexts    *[]string `json:"contexts,omitempty"`
-	ParentTask  *string   `json:"parentTask,omitempty"` // IRI, e.g. "/api/tasks/3"
+	Description *string         `json:"description,omitempty"`
+	Details     *string         `json:"details,omitempty"`
+	Done        *bool           `json:"done,omitempty"`
+	Priority    *NullableString `json:"priority,omitempty"`
+	CreatedOn   *string         `json:"createdOn,omitempty"` // "2006-01-02"
+	CompletedOn *NullableString `json:"completedOn,omitempty"`
+	DueDate     *NullableString `json:"dueDate,omitempty"`
+	Projects    *[]string       `json:"projects,omitempty"`
+	Contexts    *[]string       `json:"contexts,omitempty"`
+	ParentTask  *NullableString `json:"parentTask,omitempty"` // IRI, e.g. "/api/tasks/3"
 }
 
 // taskCollectionResponse is the Hydra collection envelope the API wraps a task
@@ -80,13 +112,40 @@ type TaskInput struct {
 type taskCollectionResponse struct {
 	Member     []Task `json:"member"`
 	TotalItems int    `json:"totalItems"`
+	View       *struct {
+		Next string `json:"next"`
+	} `json:"view"`
 }
 
-// ListTasks fetches every task visible to the authenticated user. The backend
-// scopes this server-side (see backend/src/Doctrine/CurrentUserExtension.php), so
-// it never contains another user's tasks.
+// ListTasks fetches every task visible to the authenticated user, across as many pages
+// as the API Platform default pagination (30 per page) splits them into — walking
+// view.next until a page doesn't have one. The backend scopes the underlying query to
+// the current user server-side (see backend/src/Doctrine/CurrentUserExtension.php), so
+// this never contains another user's tasks.
 func (c *Client) ListTasks(ctx context.Context) ([]Task, error) {
-	resp, err := c.do(ctx, http.MethodGet, tasksPath, nil, "")
+	var tasks []Task
+
+	path := tasksPath
+	for path != "" {
+		collection, err := c.fetchTaskPage(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+
+		tasks = append(tasks, collection.Member...)
+
+		if collection.View == nil {
+			path = ""
+		} else {
+			path = collection.View.Next
+		}
+	}
+
+	return tasks, nil
+}
+
+func (c *Client) fetchTaskPage(ctx context.Context, path string) (*taskCollectionResponse, error) {
+	resp, err := c.do(ctx, http.MethodGet, path, nil, "")
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +160,7 @@ func (c *Client) ListTasks(ctx context.Context) ([]Task, error) {
 		return nil, fmt.Errorf("apiclient: decoding task collection: %w", err)
 	}
 
-	return collection.Member, nil
+	return &collection, nil
 }
 
 // GetTask fetches a single task by id.

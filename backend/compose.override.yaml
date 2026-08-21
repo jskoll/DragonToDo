@@ -11,7 +11,12 @@ services:
       - /app/vendor/
     environment:
       APP_ENV: dev
-    ports:
+    # `!override` replaces compose.yaml's 80/443 mapping entirely instead of the
+    # default merge behavior (which would publish both sets of ports at once —
+    # 80/443 from the base file *and* 8000/8443 from this one — contradicting
+    # the 8000/8443 dev endpoint documented in README.md, and potentially
+    # failing outright if 80/443 aren't available to bind).
+    ports: !override
       - "8000:80"
       - "8443:443"
       - "8443:443/udp"

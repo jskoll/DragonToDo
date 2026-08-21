@@ -179,7 +179,7 @@ dragon-todo/
     launchd/         # macOS daemon integration
     tui/             # Interactive terminal UI
     paths/           # Config/log file paths
-    apiclient/       # Go client for backend/'s REST API (not yet wired into the TUI)
+    apiclient/       # Go client for backend's REST API (not yet wired into the TUI)
   backend/           # Symfony/API Platform REST API for shared, multi-user task
                       # storage — see backend/README.md
 ```

@@ -8,6 +8,7 @@ use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
@@ -57,7 +58,6 @@ use Symfony\Component\Validator\Constraints as Assert;
 ])]
 #[ApiFilter(OrderFilter::class, properties: ['dueDate', 'priority', 'createdOn', 'createdAt'])]
 #[ApiFilter(DateFilter::class, properties: ['dueDate'])]
-#[ORM\HasLifecycleCallbacks]
 class Task
 {
     #[ORM\Id]
@@ -106,6 +106,7 @@ class Task
      * @var list<string>
      */
     #[ORM\Column(type: Types::JSON)]
+    #[Assert\All([new Assert\Type('string')])]
     #[Groups(['task:read', 'task:write'])]
     private array $projects = [];
 
@@ -113,13 +114,14 @@ class Task
      * @var list<string>
      */
     #[ORM\Column(type: Types::JSON)]
+    #[Assert\All([new Assert\Type('string')])]
     #[Groups(['task:read', 'task:write'])]
     private array $contexts = [];
 
     /**
      * Arbitrary todo.txt-style key:value tokens, kept for round-trip fidelity with
      * the file format. Read-only via the API: it is derived (currently just a `due`
-     * key mirroring dueDate, see syncExtensions()), never accepted as input, so it
+     * key mirroring dueDate, see computeExtensions()), never accepted as input, so it
      * can never drift from the fields that are actually writable.
      *
      * @var array<string, string>
@@ -128,8 +130,20 @@ class Task
     #[Groups(['task:read'])]
     private array $extensions = [];
 
+    /**
+     * readableLink/writableLink: false forces this self-relation to always serialize
+     * as (and only ever accept) an IRI string, in both directions. Without it, API
+     * Platform's normalizer can end up trying to embed the related Task object instead
+     * of a plain IRI reference — since it's the same resource class in the same
+     * `task:read`/`task:write` groups as every scalar field here, there's otherwise
+     * nothing to disambiguate "reference" from "embed", which risks recursive or
+     * deeply-nested payloads on a task with a parent/child chain. This also matches
+     * what the Go client already assumes (`ParentTask *string`, an IRI, not a nested
+     * struct).
+     */
     #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'children')]
     #[ORM\JoinColumn(name: 'parent_task_id', nullable: true, onDelete: 'CASCADE')]
+    #[ApiProperty(readableLink: false, writableLink: false)]
     #[Groups(['task:read', 'task:write'])]
     private ?self $parentTask = null;
 
@@ -137,6 +151,7 @@ class Task
      * @var Collection<int, self>
      */
     #[ORM\OneToMany(mappedBy: 'parentTask', targetEntity: self::class)]
+    #[ApiProperty(readableLink: false, writableLink: false)]
     #[Groups(['task:read'])]
     private Collection $children;
 
@@ -332,26 +347,47 @@ class Task
         return $this->updatedAt;
     }
 
-    #[ORM\PrePersist]
-    public function onPrePersist(): void
+    /**
+     * Called from App\EventListener\TaskTimestampListener::prePersist(). Not itself an
+     * #[ORM\PrePersist] lifecycle callback because keeping both prePersist and preUpdate
+     * handling together in one listener (rather than splitting prePersist into an entity
+     * callback and preUpdate into a listener) is less surprising to a reader than having
+     * timestamp logic live in two different places for what looks like one concern — see
+     * that listener's docblock for why preUpdate specifically *can't* be a bare lifecycle
+     * callback here.
+     */
+    public function initializeTimestamps(): void
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->syncExtensions();
+        $this->extensions = $this->computeExtensions();
     }
 
-    #[ORM\PreUpdate]
-    public function onPreUpdate(): void
+    /**
+     * Called from TaskTimestampListener::preUpdate(). A plain mutation like this made
+     * from inside preUpdate is invisible to Doctrine unless the listener also calls
+     * UnitOfWork::recomputeSingleEntityChangeSet() afterwards — see that listener's
+     * docblock for why (`PreUpdateEventArgs::setNewValue()`, the more commonly-reached-for
+     * fix, only works for a field Doctrine *already* considers changed in this update, so
+     * it can't introduce `updatedAt` into the changeset when nothing else touched it).
+     */
+    public function touchUpdatedAt(): void
     {
         $this->updatedAt = new \DateTimeImmutable();
-        $this->syncExtensions();
+        $this->extensions = $this->computeExtensions();
     }
 
-    private function syncExtensions(): void
+    /**
+     * @return array<string, string>
+     */
+    public function computeExtensions(): array
     {
+        $extensions = $this->extensions;
         if (null !== $this->dueDate) {
-            $this->extensions['due'] = $this->dueDate->format('Y-m-d');
+            $extensions['due'] = $this->dueDate->format('Y-m-d');
         } else {
-            unset($this->extensions['due']);
+            unset($extensions['due']);
         }
+
+        return $extensions;
     }
 }

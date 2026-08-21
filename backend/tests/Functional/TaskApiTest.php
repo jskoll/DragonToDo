@@ -28,6 +28,14 @@ final class TaskApiTest extends FunctionalTestCase
         return ['headers' => ['Authorization' => 'Bearer '.$token]];
     }
 
+    private function patchHeaders(string $token): array
+    {
+        return ['headers' => [
+            'Authorization' => 'Bearer '.$token,
+            'Content-Type' => 'application/merge-patch+json',
+        ]];
+    }
+
     public function testCreateTaskIgnoresClientSuppliedOwner(): void
     {
         $client = static::createClient();
@@ -117,6 +125,109 @@ final class TaskApiTest extends FunctionalTestCase
         ]);
 
         self::assertContains($client->getResponse()->getStatusCode(), [400, 404, 422]);
+    }
+
+    public function testCannotSetATaskAsItsOwnParent(): void
+    {
+        $client = static::createClient();
+        $token = $this->registerAndLogin($client, 'self-parent@example.com');
+
+        $client->request('POST', '/api/tasks', [
+            ...$this->authHeaders($token),
+            'json' => ['description' => 'Solo task'],
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $task = $client->getResponse()->toArray();
+
+        $client->request('PATCH', $task['@id'], [
+            ...$this->patchHeaders($token),
+            'json' => ['parentTask' => $task['@id']],
+        ]);
+        self::assertResponseStatusCodeSame(422);
+    }
+
+    public function testCannotReparentATaskUnderItsOwnDescendant(): void
+    {
+        $client = static::createClient();
+        $token = $this->registerAndLogin($client, 'descendant-cycle@example.com');
+
+        $client->request('POST', '/api/tasks', [
+            ...$this->authHeaders($token),
+            'json' => ['description' => 'Grandparent'],
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $grandparent = $client->getResponse()->toArray();
+
+        $client->request('POST', '/api/tasks', [
+            ...$this->authHeaders($token),
+            'json' => ['description' => 'Parent', 'parentTask' => $grandparent['@id']],
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $parent = $client->getResponse()->toArray();
+
+        $client->request('POST', '/api/tasks', [
+            ...$this->authHeaders($token),
+            'json' => ['description' => 'Child', 'parentTask' => $parent['@id']],
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $child = $client->getResponse()->toArray();
+
+        // grandparent -> parent -> child already; making grandparent a child of its own
+        // grandchild would close the loop.
+        $client->request('PATCH', $grandparent['@id'], [
+            ...$this->patchHeaders($token),
+            'json' => ['parentTask' => $child['@id']],
+        ]);
+        self::assertResponseStatusCodeSame(422);
+    }
+
+    public function testPatchPersistsUpdatedAtAndExtensionsPastTheImmediateResponse(): void
+    {
+        $client = static::createClient();
+        $token = $this->registerAndLogin($client, 'timestamp-test@example.com');
+
+        $client->request('POST', '/api/tasks', [
+            ...$this->authHeaders($token),
+            'json' => ['description' => 'Needs a due date'],
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $created = $client->getResponse()->toArray();
+
+        $client->request('PATCH', $created['@id'], [
+            ...$this->patchHeaders($token),
+            'json' => ['dueDate' => '2026-09-01'],
+        ]);
+        self::assertResponseIsSuccessful();
+
+        // Query the raw DB row directly rather than another $client->request(): within one
+        // PHPUnit process Doctrine's identity map could return the same in-memory (already
+        // correctly-updated) object for a second request even if the actual SQL UPDATE
+        // silently dropped these columns, producing a false pass. This is exactly the
+        // scenario a bare #[ORM\PreUpdate] lifecycle callback gets wrong — Doctrine computes
+        // the changeset before invoking it, so field mutations made inside are never
+        // written — see App\EventListener\TaskTimestampListener's docblock.
+        $connection = static::getContainer()->get(\Doctrine\DBAL\Connection::class);
+        $row = $connection->fetchAssociative(
+            'SELECT updated_at, extensions FROM task WHERE id = ?',
+            [$created['id']],
+        );
+
+        self::assertNotFalse($row);
+        self::assertNotNull($row['updated_at'], 'updated_at was not persisted by the PATCH');
+        $extensions = json_decode((string) $row['extensions'], true);
+        self::assertSame('2026-09-01', $extensions['due'] ?? null, 'extensions.due was not persisted by the PATCH');
+    }
+
+    public function testProjectsAndContextsRejectNonStringElements(): void
+    {
+        $client = static::createClient();
+        $token = $this->registerAndLogin($client, 'element-type@example.com');
+
+        $client->request('POST', '/api/tasks', [
+            ...$this->authHeaders($token),
+            'json' => ['description' => 'Bad tags', 'projects' => [1], 'contexts' => [true]],
+        ]);
+        self::assertResponseStatusCodeSame(422);
     }
 
     public function testDueDateIsFilterableAndSortable(): void

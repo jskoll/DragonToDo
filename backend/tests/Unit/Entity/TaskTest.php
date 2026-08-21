@@ -22,11 +22,11 @@ final class TaskTest extends TestCase
         self::assertCount(0, $task->getChildren());
     }
 
-    public function testPrePersistSetsCreatedAtAndSyncsDueExtension(): void
+    public function testInitializeTimestampsSetsCreatedAtAndSyncsDueExtension(): void
     {
         $task = (new Task())->setDueDate(new \DateTimeImmutable('2026-09-01'));
 
-        $task->onPrePersist();
+        $task->initializeTimestamps();
 
         self::assertSame('2026-09-01', $task->getExtensions()['due']);
         self::assertInstanceOf(\DateTimeImmutable::class, $task->getCreatedAt());
@@ -35,11 +35,11 @@ final class TaskTest extends TestCase
     public function testClearingDueDateRemovesTheExtension(): void
     {
         $task = (new Task())->setDueDate(new \DateTimeImmutable('2026-09-01'));
-        $task->onPrePersist();
+        $task->initializeTimestamps();
         self::assertArrayHasKey('due', $task->getExtensions());
 
         $task->setDueDate(null);
-        $task->onPreUpdate();
+        $task->touchUpdatedAt();
 
         self::assertArrayNotHasKey('due', $task->getExtensions());
         self::assertInstanceOf(\DateTimeImmutable::class, $task->getUpdatedAt());

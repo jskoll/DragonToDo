@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -101,6 +103,111 @@ func TestDoRefreshesAccessTokenOnceOn401(t *testing.T) {
 	}
 }
 
+// ListTasks must walk every page (API Platform's default pagination caps a single
+// response at 30 items), aggregating `member` across pages rather than silently
+// returning only the first page.
+func TestListTasksWalksPagination(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		switch r.URL.RawQuery {
+		case "":
+			writeJSON(t, w, http.StatusOK, taskCollectionResponse{
+				Member: []Task{{ID: 1, Description: "first"}, {ID: 2, Description: "second"}},
+				View: &struct {
+					Next string `json:"next"`
+				}{Next: tasksPath + "?page=2"},
+			})
+		case "page=2":
+			writeJSON(t, w, http.StatusOK, taskCollectionResponse{
+				Member: []Task{{ID: 3, Description: "third"}},
+			})
+		default:
+			t.Fatalf("unexpected query: %s", r.URL.RawQuery)
+		}
+	}))
+	defer server.Close()
+
+	client := New(server.URL, server.Client())
+	client.accessToken = "access-1"
+
+	tasks, err := client.ListTasks(context.Background())
+	if err != nil {
+		t.Fatalf("ListTasks() error = %v", err)
+	}
+	if len(tasks) != 3 {
+		t.Fatalf("expected 3 tasks across 2 pages, got %d: %+v", len(tasks), tasks)
+	}
+	for i, wantID := range []int{1, 2, 3} {
+		if tasks[i].ID != wantID {
+			t.Fatalf("tasks[%d].ID = %d, want %d", i, tasks[i].ID, wantID)
+		}
+	}
+}
+
+// Two goroutines hitting a 401 at (nearly) the same moment must coalesce into a single
+// refresh call: the server here accepts exactly one refresh (matching the real API's
+// single-use rotation) and 401s any second attempt, so a naive implementation that lets
+// both goroutines call refresh() independently would leave one of them permanently
+// unauthenticated even though the client, as a whole, is fine.
+func TestConcurrentRefreshCoalescesIntoOneCall(t *testing.T) {
+	var refreshCount int32
+	var currentAccessToken atomic.Value
+	// The server only ever accepts "access-2": the client starting on "access-1"
+	// simulates every goroutine's first request racing against an already-expired
+	// access token, so every one of them hits a 401 before any refresh has happened.
+	currentAccessToken.Store("access-2")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == refreshTokenPath:
+			if atomic.AddInt32(&refreshCount, 1) > 1 {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+			currentAccessToken.Store("access-2")
+			writeJSON(t, w, http.StatusOK, tokenPairResponse{Token: "access-2", RefreshToken: "refresh-2"})
+		case r.URL.Path == tasksPath:
+			if r.Header.Get("Authorization") != "Bearer "+currentAccessToken.Load().(string) {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+			writeJSON(t, w, http.StatusOK, taskCollectionResponse{Member: []Task{{ID: 1, Description: "hi"}}})
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	client := New(server.URL, server.Client())
+	client.accessToken = "access-1"
+	client.refreshToken = "refresh-1"
+
+	const goroutines = 5
+	var wg sync.WaitGroup
+	errs := make([]error, goroutines)
+	for i := range goroutines {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, errs[i] = client.ListTasks(context.Background())
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("goroutine %d: ListTasks() error = %v", i, err)
+		}
+	}
+	if got := atomic.LoadInt32(&refreshCount); got != 1 {
+		t.Fatalf("expected exactly 1 refresh call, got %d", got)
+	}
+}
+
 func TestCreateAndUpdateTask(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -192,6 +299,95 @@ func TestDeleteTaskOnAnotherUsersTaskReturns404(t *testing.T) {
 	var apiErr *APIError
 	if !asAPIError(err, &apiErr) || apiErr.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected a 404 *APIError, got %v", err)
+	}
+}
+
+// A nil TaskInput.DueDate must be omitted (PATCH leaves it unchanged), while
+// NullClear() must send an explicit JSON null (PATCH clears it) — a plain *string
+// can't distinguish these two cases once marshaled with `omitempty`.
+func TestNullClearSendsExplicitJSONNull(t *testing.T) {
+	unset, err := json.Marshal(TaskInput{})
+	if err != nil {
+		t.Fatalf("Marshal(unset) error = %v", err)
+	}
+	if string(unset) != "{}" {
+		t.Fatalf("Marshal(unset) = %s, want {}", unset)
+	}
+
+	cleared, err := json.Marshal(TaskInput{DueDate: NullClear()})
+	if err != nil {
+		t.Fatalf("Marshal(cleared) error = %v", err)
+	}
+	if string(cleared) != `{"dueDate":null}` {
+		t.Fatalf("Marshal(cleared) = %s, want {\"dueDate\":null}", cleared)
+	}
+
+	set, err := json.Marshal(TaskInput{DueDate: NullSet("2026-09-01")})
+	if err != nil {
+		t.Fatalf("Marshal(set) error = %v", err)
+	}
+	if string(set) != `{"dueDate":"2026-09-01"}` {
+		t.Fatalf("Marshal(set) = %s, want {\"dueDate\":\"2026-09-01\"}", set)
+	}
+}
+
+// A PATCH clearing dueDate must actually reach the server as JSON null in the request
+// body, not be dropped or sent as an empty string.
+func TestUpdateTaskSendsNullToClearADateField(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var raw map[string]json.RawMessage
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+			t.Fatal(err)
+		}
+		dueDate, ok := raw["dueDate"]
+		if !ok {
+			t.Fatalf("expected dueDate in patch body, got %+v", raw)
+		}
+		if string(dueDate) != "null" {
+			t.Fatalf("dueDate = %s, want null", dueDate)
+		}
+
+		writeJSON(t, w, http.StatusOK, Task{
+			IRI: "/api/tasks/1", ID: 1, Description: "No longer due",
+			Projects: []string{}, Contexts: []string{}, Extensions: extensions{},
+		})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, server.Client())
+	client.accessToken = "access-1"
+
+	updated, err := client.UpdateTask(context.Background(), 1, TaskInput{DueDate: NullClear()})
+	if err != nil {
+		t.Fatalf("UpdateTask() error = %v", err)
+	}
+	if tm, ok := updated.DueDate.Time(); ok {
+		t.Fatalf("expected DueDate to be cleared, got %v", tm)
+	}
+}
+
+// RegistrationController returns {"error": "...", "violations": {...}}, not RFC 7807's
+// title/detail — Register() must still surface the message.
+func TestRegisterDecodesCustomErrorShape(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, http.StatusConflict, map[string]string{
+			"error": "An account with this email already exists.",
+		})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, server.Client())
+	err := client.Register(context.Background(), "dupe@example.com", "correct-horse-battery-staple")
+
+	var apiErr *APIError
+	if !asAPIError(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != http.StatusConflict {
+		t.Fatalf("StatusCode = %d, want 409", apiErr.StatusCode)
+	}
+	if apiErr.Detail != "An account with this email already exists." {
+		t.Fatalf("Detail = %q, want the server's error message", apiErr.Detail)
 	}
 }
 
